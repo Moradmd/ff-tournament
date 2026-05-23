@@ -661,16 +661,25 @@ def rupantor_success():
         return _join_redirect("Transaction ID নেই")
     # order_id directly from URL (passed in success_url), fallback to verify API metadata
     order_id = request.args.get("order_id", type=int)
+
+    result = rupantorpay.verify_payment(transaction_id, ENTRY_FEE)
+    if not result["ok"]:
+        return _join_redirect(result["error"])
+
     if not order_id:
-        _o, err = _finalize_rupantor(transaction_id)
-        if err or not _o:
-            return _join_redirect(err or "Payment verify হয়নি")
-        order_id = _o
-    else:
-        # Verify + complete
-        _, err = _finalize_rupantor(transaction_id)
-        if err:
-            return _join_redirect(err)
+        order_id = result.get("order_id")
+    if not order_id:
+        return _join_redirect("Order ID পাওয়া যায়নি")
+
+    _, err = _complete_gateway_order(
+        order_id,
+        result["trx_id"],
+        result["payment_method"],
+        gateway_tran_id=transaction_id,
+    )
+    if err:
+        return _join_redirect(err)
+
     with get_db() as conn:
         conn.execute(
             "UPDATE orders SET gateway_tran_id = ? WHERE id = ?",
@@ -718,9 +727,29 @@ def rupantor_webhook():
     transaction_id = str(transaction_id).strip()
     if not transaction_id:
         return "FAILED", 400
-    order_id, err = _finalize_rupantor(transaction_id)
-    if err or not order_id:
+
+    result = rupantorpay.verify_payment(transaction_id, ENTRY_FEE)
+    if not result["ok"]:
+        logging.warning("RupantorPay webhook verify fail: %s", result.get("error"))
         return "FAILED", 400
+
+    order_id = data.get("order_id") or request.args.get("order_id", type=int)
+    if not order_id:
+        order_id = result.get("order_id")
+    if not order_id:
+        logging.warning("RupantorPay webhook: no order_id for %s", transaction_id)
+        return "FAILED", 400
+
+    _, err = _complete_gateway_order(
+        order_id,
+        result["trx_id"],
+        result["payment_method"],
+        gateway_tran_id=transaction_id,
+    )
+    if err:
+        logging.warning("RupantorPay webhook complete fail: %s", err)
+        return "FAILED", 400
+
     with get_db() as conn:
         conn.execute(
             "UPDATE orders SET gateway_tran_id = ? WHERE id = ?",
