@@ -1183,14 +1183,6 @@ def admin_dashboard():
             (tournament["id"],),
         ).fetchall()
 
-        for p in pending:
-            p_members = conn.execute(
-                "SELECT * FROM order_members WHERE order_id = ? ORDER BY position",
-                (p["id"],),
-            ).fetchall()
-            p = dict(p)
-            p["members"] = p_members
-
         pending_full = []
         for p in pending:
             d = dict(p)
@@ -1204,6 +1196,23 @@ def admin_dashboard():
             pending_full.append(d)
 
         slots, filled = lobby_data(conn, tournament)
+
+        payment_history = [
+            dict(r) for r in conn.execute(
+                """
+                SELECT o.id, o.status, o.squad_name, o.leader_contact,
+                       o.payment_method, o.payment_trx, o.gateway_tran_id,
+                       o.auto_approved, o.created_at, o.reviewed_at,
+                       o.reject_reason, s.slot_number
+                FROM orders o
+                LEFT JOIN slots s ON s.id = o.assigned_slot_id
+                WHERE o.tournament_id = ?
+                ORDER BY o.created_at DESC
+                LIMIT 200
+                """,
+                (tournament["id"],),
+            ).fetchall()
+        ]
 
     join_link = url_for("join", token=tournament["join_token"], _external=True)
     raw_at = ""
@@ -1227,6 +1236,7 @@ def admin_dashboard():
         gateway_enabled=payment_gateway.is_enabled(),
         gateway_name=payment_gateway.provider_name(),
         pending_payment_count=pending_payment_count,
+        payment_history=payment_history,
         whatsapp_group_link=_get_whatsapp_link(tournament),
         room_schedule_label=_room_schedule_label(tournament),
         room_at_input=room_at_input,

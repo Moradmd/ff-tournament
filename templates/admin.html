@@ -257,6 +257,56 @@
   </div>
 </section>
 
+<section class="mt-10">
+  <h2 class="text-lg font-bold mb-3">পেমেন্ট ইতিহাস (সর্বশেষ ২০০)</h2>
+  <div class="overflow-x-auto border border-slate-800 rounded-xl">
+    <table class="min-w-full text-xs">
+      <thead class="bg-slate-900">
+        <tr class="text-left text-slate-400">
+          <th class="px-3 py-2">#</th>
+          <th class="px-3 py-2">স্লট</th>
+          <th class="px-3 py-2">স্কোয়াড</th>
+          <th class="px-3 py-2">নম্বর</th>
+          <th class="px-3 py-2">পেমেন্ট</th>
+          <th class="px-3 py-2">Trx ID</th>
+          <th class="px-3 py-2">Gateway Trx</th>
+          <th class="px-3 py-2">স্ট্যাটাস</th>
+          <th class="px-3 py-2">সময়</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-800">
+        {% for o in payment_history %}
+        <tr class="bg-slate-950/40 hover:bg-slate-900/60">
+          <td class="px-3 py-2 font-semibold">#{{ o.id }}</td>
+          <td class="px-3 py-2">{% if o.slot_number %}{{ o.slot_number }}{% else %}—{% endif %}</td>
+          <td class="px-3 py-2">{{ o.squad_name or '—' }}</td>
+          <td class="px-3 py-2 text-slate-300">{{ o.leader_contact }}</td>
+          <td class="px-3 py-2 uppercase text-slate-400">{{ o.payment_method }}</td>
+          <td class="px-3 py-2 font-mono">{{ o.payment_trx }}</td>
+          <td class="px-3 py-2 font-mono text-slate-500">{% if o.gateway_tran_id %}{{ o.gateway_tran_id }}{% else %}—{% endif %}</td>
+          <td class="px-3 py-2">
+            <span class="text-[10px] uppercase px-2 py-0.5 rounded border
+              {% if o.status == 'approved' %}bg-emerald-900/40 text-emerald-300 border-emerald-700/40
+              {% elif o.status == 'rejected' %}bg-red-900/40 text-red-300 border-red-700/40
+              {% elif o.status == 'pending_approval' %}bg-amber-900/40 text-amber-300 border-amber-700/40
+              {% elif o.status == 'pending_payment' %}bg-slate-800 text-slate-300 border-slate-700
+              {% elif o.status == 'payment_failed' %}bg-red-900/30 text-red-400 border-red-800/40
+              {% else %}bg-slate-900 text-slate-300 border-slate-700{% endif %}">
+              {{ o.status }}
+            </span>
+            {% if o.auto_approved %}<span class="ml-1 text-[10px] text-teal-400">⚡Auto</span>{% endif %}
+          </td>
+          <td class="px-3 py-2 text-slate-500 whitespace-nowrap">{{ o.created_at or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not payment_history %}
+  <p class="text-slate-500 mt-3 text-sm">কোনো অর্ডার নেই।</p>
+  {% endif %}
+</section>
+
 <section class="mt-10 border border-red-700/30 bg-red-950/30 rounded-xl p-4">
   <h2 class="text-base font-bold text-red-200">Danger zone</h2>
   <p class="text-xs text-red-200/80 mt-1">
