@@ -353,6 +353,40 @@ def api_check_joined():
         })
 
 
+@app.route("/api/recent-orders")
+def api_recent_orders():
+    limit = max(1, min(50, request.args.get("limit", 10, type=int)))
+    with get_db() as conn:
+        t = get_tournament(conn)
+        rows = conn.execute(
+            """
+            SELECT o.id, o.status, o.squad_name, o.leader_contact, o.created_at,
+                   s.slot_number
+            FROM orders o
+            LEFT JOIN slots s ON s.id = o.assigned_slot_id
+            WHERE o.tournament_id = ? AND o.status IN ('approved','pending_approval')
+            ORDER BY datetime(o.created_at) DESC
+            LIMIT ?
+            """,
+            (t["id"], limit),
+        ).fetchall()
+        result = []
+        for r in rows:
+            players = conn.execute(
+                "SELECT display_name FROM order_members WHERE order_id = ? ORDER BY position LIMIT 1",
+                (r["id"],),
+            ).fetchone()
+            name = (r["squad_name"] or "").strip() or (players["display_name"] if players else "")
+            result.append({
+                "order_id": r["id"],
+                "slot": r["slot_number"],
+                "name": name,
+                "status": r["status"],
+                "time": r["created_at"],
+            })
+    return jsonify(result)
+
+
 @app.route("/join")
 @app.route("/join/<token>")
 def join(token=None):

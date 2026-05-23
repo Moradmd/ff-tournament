@@ -60,6 +60,12 @@
       {% endfor %}
     </div>
 
+    <div class="ff-recent-joined">
+      <h3 class="ff-recent-title">📍 যারা জয়েন করেছে</h3>
+      <div id="ffRecentList" class="ff-recent-list">
+        <div class="ff-recent-placeholder">লোড হচ্ছে...</div>
+      </div>
+    </div>
     <p class="ff-footer-note">Only admin-approved squads are listed · Updated live</p>
   </div>
 
@@ -405,6 +411,54 @@
   })();
   </script>
 
+  <script>
+  (function () {
+    var listEl = document.getElementById("ffRecentList");
+    if (listEl) {
+      var lastCount = 0;
+      function loadRecent() {
+        fetch("{{ url_for('api_recent_orders') }}?limit=10")
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.length) {
+              listEl.innerHTML = '<div class="ff-recent-placeholder">কেউ জয়েন করেনি এখনো</div>';
+              lastCount = 0;
+              return;
+            }
+            var html = "";
+            data.forEach(function (o) {
+              var label = o.status === "approved" ? "✅" : "⏳";
+              var cls = o.status === "approved" ? "" : " is-pending";
+              var name = o.name || "Squad #" + o.order_id;
+              html += '<div class="ff-recent-item' + cls + '">' +
+                '<span class="ff-recent-slot">#' + o.slot + '</span>' +
+                '<span class="ff-recent-name">' + label + " " + escHtml(name) + '</span>' +
+                '<span class="ff-recent-time">' + timeAgo(o.time) + '</span></div>';
+            });
+            listEl.innerHTML = html;
+            lastCount = data.length;
+          })
+          .catch(function () {});
+      }
+      function escHtml(s) {
+        var d = document.createElement("div");
+        d.appendChild(document.createTextNode(s || ""));
+        return d.innerHTML;
+      }
+      function timeAgo(iso) {
+        if (!iso) return "";
+        try {
+          var diff = Math.floor((Date.now() - new Date(iso.replace(" ","T")+"Z").getTime()) / 1000);
+          if (diff < 60) return "এখনই";
+          if (diff < 3600) return Math.floor(diff/60) + "m";
+          return Math.floor(diff/3600) + "h";
+        } catch(e) { return ""; }
+      }
+      loadRecent();
+      setInterval(loadRecent, 10000);
+    }
+  })();
+  </script>
   <script>
   (function () {
     var joinBtn = document.getElementById("joinBtn");

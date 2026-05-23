@@ -2507,6 +2507,99 @@ body {
   overflow-x: hidden;
 }
 
+/* ─── Recently Joined ─── */
+.ff-recent-joined {
+  margin: 18px 0 8px;
+  padding: 6px 10px 10px;
+  background: rgba(28,22,40,0.7);
+  border: 1px solid rgba(45,212,191,0.12);
+  border-radius: 10px;
+}
+
+.ff-recent-title {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ff-teal, #2dd4bf);
+}
+
+.ff-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(45,212,191,0.25) transparent;
+}
+
+.ff-recent-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  background: rgba(45,212,191,0.04);
+  border-left: 3px solid var(--ff-teal, #2dd4bf);
+  animation: ffRecentIn 0.3s ease-out;
+}
+
+.ff-recent-item.is-pending {
+  border-left-color: var(--ff-amber, #f59e0b);
+  opacity: 0.8;
+}
+
+.ff-recent-slot {
+  font-weight: 700;
+  color: var(--ff-gold, #f0c040);
+  flex-shrink: 0;
+  min-width: 28px;
+}
+
+.ff-recent-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ff-name, #f2e6c8);
+}
+
+.ff-recent-time {
+  font-size: 0.68rem;
+  color: var(--ff-muted, #8e82a4);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ff-recent-placeholder {
+  text-align: center;
+  padding: 10px 0;
+  font-size: 0.78rem;
+  color: var(--ff-muted, #8e82a4);
+}
+
+@keyframes ffRecentIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 420px) {
+  .ff-recent-joined {
+    padding: 4px 8px 8px;
+  }
+  .ff-recent-title {
+    font-size: 0.72rem;
+  }
+  .ff-recent-item {
+    font-size: 0.72rem;
+    padding: 3px 6px;
+  }
+}
+
 @media (max-width: 420px) {
   .ff-receipt-row strong {
     max-width: 50%;
