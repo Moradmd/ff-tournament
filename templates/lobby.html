@@ -414,49 +414,63 @@
   <script>
   (function () {
     var listEl = document.getElementById("ffRecentList");
-    if (listEl) {
-      var lastCount = 0;
-      function loadRecent() {
-        fetch("{{ url_for('api_recent_orders') }}?limit=10")
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (!data || !data.length) {
-              listEl.innerHTML = '<div class="ff-recent-placeholder">কেউ জয়েন করেনি এখনো</div>';
-              lastCount = 0;
-              return;
-            }
-            var html = "";
-            data.forEach(function (o) {
-              var label = o.status === "approved" ? "✅" : "⏳";
-              var cls = o.status === "approved" ? "" : " is-pending";
-              var name = o.name || "Squad #" + o.order_id;
-              html += '<div class="ff-recent-item' + cls + '">' +
-                '<span class="ff-recent-slot">#' + o.slot + '</span>' +
-                '<span class="ff-recent-name">' + label + " " + escHtml(name) + '</span>' +
-                '<span class="ff-recent-time">' + timeAgo(o.time) + '</span></div>';
-            });
-            listEl.innerHTML = html;
-            lastCount = data.length;
-          })
-          .catch(function () {});
-      }
-      function escHtml(s) {
-        var d = document.createElement("div");
-        d.appendChild(document.createTextNode(s || ""));
-        return d.innerHTML;
-      }
-      function timeAgo(iso) {
-        if (!iso) return "";
-        try {
-          var diff = Math.floor((Date.now() - new Date(iso.replace(" ","T")+"Z").getTime()) / 1000);
-          if (diff < 60) return "এখনই";
-          if (diff < 3600) return Math.floor(diff/60) + "m";
-          return Math.floor(diff/3600) + "h";
-        } catch(e) { return ""; }
-      }
-      loadRecent();
-      setInterval(loadRecent, 10000);
+    if (!listEl) return;
+    var seenIds = {};
+    function makeItem(o) {
+      var label = o.status === "approved" ? "✅" : "⏳";
+      var cls = o.status === "approved" ? "" : " is-pending";
+      var name = o.name || "Squad #" + o.order_id;
+      var div = document.createElement("div");
+      div.className = "ff-recent-item" + cls;
+      div.innerHTML = '<span class="ff-recent-slot">#' + o.slot + '</span>' +
+        '<span class="ff-recent-name">' + label + " " + escHtml(name) + '</span>' +
+        '<span class="ff-recent-time">' + timeAgo(o.time) + '</span>';
+      return div;
     }
+    function loadRecent() {
+      fetch("{{ url_for('api_recent_orders') }}?limit=10")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.length) {
+            if (!Object.keys(seenIds).length) {
+              listEl.innerHTML = '<div class="ff-recent-placeholder">কেউ জয়েন করেনি এখনো</div>';
+            }
+            return;
+          }
+          var anyNew = false;
+          data.forEach(function (o) {
+            if (!seenIds[o.order_id]) {
+              seenIds[o.order_id] = true;
+              var item = makeItem(o);
+              if (listEl.firstChild && listEl.firstChild.className === "ff-recent-placeholder") {
+                listEl.innerHTML = "";
+              }
+              listEl.insertBefore(item, listEl.firstChild);
+              anyNew = true;
+            }
+          });
+          if (!Object.keys(seenIds).length) {
+            listEl.innerHTML = '<div class="ff-recent-placeholder">কেউ জয়েন করেনি এখনো</div>';
+          }
+        })
+        .catch(function () {});
+    }
+    function escHtml(s) {
+      var d = document.createElement("div");
+      d.appendChild(document.createTextNode(s || ""));
+      return d.innerHTML;
+    }
+    function timeAgo(iso) {
+      if (!iso) return "";
+      try {
+        var diff = Math.floor((Date.now() - new Date(iso.replace(" ","T")+"Z").getTime()) / 1000);
+        if (diff < 60) return "এখনই";
+        if (diff < 3600) return Math.floor(diff/60) + "m";
+        return Math.floor(diff/3600) + "h";
+      } catch(e) { return ""; }
+    }
+    loadRecent();
+    setInterval(loadRecent, 10000);
   })();
   </script>
   <script>
