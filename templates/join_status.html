@@ -84,7 +84,7 @@
     {% if whatsapp_group_link %}
     <div class="ff-receipt ff-card">
       <p class="ff-receipt-title">Room + WhatsApp</p>
-      {% if tournament.room_id %}
+      {% if tournament.room_id and view_token %}
       <div class="ff-receipt-row">
         <span>Room ID</span>
         <span class="ff-copy-cell">
@@ -93,7 +93,7 @@
         </span>
       </div>
       {% endif %}
-      {% if tournament.room_pass %}
+      {% if tournament.room_pass and view_token %}
       <div class="ff-receipt-row">
         <span>Room Pass</span>
         <span class="ff-copy-cell">

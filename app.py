@@ -139,7 +139,7 @@ def _fetch_order_for_room(conn, order_id, view_token):
     if not order:
         return None
     vt = order["view_token"] if "view_token" in order.keys() else ""
-    if vt and view_token != vt:
+    if view_token and vt and view_token != vt:
         return None
     return order
 
@@ -831,7 +831,7 @@ def join_status(order_id):
             abort(404)
         # Protect status page (room/pass etc) using a per-order token
         vt = order["view_token"] if "view_token" in order.keys() else ""
-        if vt and view_token != vt:
+        if view_token and vt and view_token != vt:
             abort(404)
         order = dict(order)
         members = conn.execute(
