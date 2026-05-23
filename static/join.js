@@ -249,40 +249,11 @@
       const c = String(fd.get("leader_contact") || "").trim();
       if (c) localStorage.setItem("ff_contact", c);
       const red = String(data.redirect || "").trim();
+      // Manual payment e status page e direct redirect hoy — eta save kore rakhi
       if (red && red.indexOf("/join/status/") === 0) {
         localStorage.setItem("ff_last_status_url", red);
       }
     } catch (e) {}
-    if (window.TEST_MODE && data.simulate_url) {
-      // Show simulate button instead of redirecting to real gateway
-      submitBtn.textContent = "🔬 Simulate Payment";
-      submitBtn.disabled = false;
-      submitBtn.onclick = async function () {
-        submitBtn.textContent = "Processing...";
-        submitBtn.disabled = true;
-        try {
-          const sim = await fetch(data.simulate_url, { method: "POST" });
-          const simData = await sim.json();
-          if (simData.ok) {
-            if (simData.redirect) {
-              localStorage.setItem("ff_last_status_url", simData.redirect);
-              window.location = simData.redirect;
-            }
-          } else {
-            err.textContent = simData.error || "Simulate failed";
-            err.classList.remove("hidden");
-            submitBtn.disabled = false;
-            submitBtn.textContent = "🔬 Simulate Payment";
-          }
-        } catch (e) {
-          err.textContent = "Network error";
-          err.classList.remove("hidden");
-          submitBtn.disabled = false;
-          submitBtn.textContent = "🔬 Simulate Payment";
-        }
-      };
-      return;
-    }
     window.location = data.redirect;
   });
 
