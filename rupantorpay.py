@@ -109,11 +109,12 @@ def verify_payment(transaction_id, expected_amount=None):
     except ValueError:
         return {"ok": False, "error": "Invalid verify response"}
 
-    if data.get("status") is False:
-        return {"ok": False, "error": data.get("message") or "Verify failed"}
-
-    pay_status = str(data.get("status") or "").upper()
-    if pay_status not in ("COMPLETED", "SUCCESS"):
+    pay_status = data.get("status")
+    if pay_status in (1, True, "1", "COMPLETED", "SUCCESS"):
+        pass  # success
+    elif pay_status is False or pay_status in (0, "0", "ERROR", "FAILED", "CANCELLED"):
+        return {"ok": False, "error": data.get("message") or f"Payment failed ({pay_status})"}
+    else:
         return {"ok": False, "error": f"Payment {pay_status or 'not completed'}"}
 
     amount = float(str(data.get("amount", "0")).replace(",", "") or 0)
