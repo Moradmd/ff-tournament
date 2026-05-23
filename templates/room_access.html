@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>রুম আইডি/পাস</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+</head>
+<body class="ff-form-page ff-status-page">
+  <div class="ff-form-wrap ff-status-wrap">
+    <p class="ff-status-emoji">🔒</p>
+    <h1 class="ff-status-title">রুম আইডি / পাস</h1>
+    <p class="ff-sub" style="max-width: 420px;">
+      শুধু পেমেন্ট/স্লট নেওয়া খেলোয়াড়রা রুম তথ্য দেখতে পারবেন। পেমেন্টের পর যে <b>স্ট্যাটাস লিংক</b> পেয়েছেন সেটা এখানে পেস্ট করুন।
+    </p>
+
+    {% if error %}
+      <p class="ff-err">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" style="margin-top: 12px; width: 100%; max-width: 420px;">
+      <div class="ff-card ff-card-inline" style="padding: 12px;">
+        <div class="ff-field" style="flex:1;">
+          <label>স্ট্যাটাস লিংক</label>
+          <input name="status_link" placeholder="https://.../join/status/123?t=xxxx" />
+        </div>
+      </div>
+
+      <p class="ff-sub" style="margin: 10px 0 6px;">অথবা (ম্যানুয়াল):</p>
+      <div class="ff-card ff-card-inline" style="padding: 12px;">
+        <div class="ff-field" style="flex:1; min-width: 140px;">
+          <label>অর্ডার আইডি</label>
+          <input name="order_id" inputmode="numeric" placeholder="123" />
+        </div>
+        <div class="ff-field" style="flex:1; min-width: 180px;">
+          <label>টোকেন (t)</label>
+          <input name="t" placeholder="লিংকের t=..." />
+        </div>
+      </div>
+
+      <button type="submit" class="ff-btn-room-view ff-btn-room-view-block" style="max-width: 320px;">
+        রুম তথ্য দেখুন
+      </button>
+    </form>
+
+    <a href="{{ url_for('home') }}" class="ff-btn-room-view ff-btn-room-view-block" style="max-width: 320px; background: linear-gradient(180deg, #3a3348 0%, #2a2438 100%); color: #eae3f6; border-color: #524868;">
+      লবিতে ফিরে যান
+    </a>
+  </div>
+</body>
+</html>

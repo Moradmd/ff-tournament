@@ -1,0 +1,16 @@
+{% if order.slot_number and order.status != 'rejected' %}
+<div class="ff-my-slot-lobby">
+  <div class="ff-team ff-team-mine">
+    <div class="ff-team-num">{{ order.slot_number }}</div>
+    <div class="ff-team-rows">
+      {% for p in squad_players %}
+      <div class="ff-player-row {% if p %}is-filled is-mine{% else %}is-empty{% endif %}">
+        {% if p %}
+        <span class="ff-player-name" title="{% if p.uid %}UID: {{ p.uid }}{% endif %}">{{ p.name }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}

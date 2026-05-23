@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Register — {{ tournament.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
+  <style>.hidden { display: none !important; }</style>
+</head>
+<body class="ff-form-page ff-compact">
+  <div class="ff-form-wrap">
+    <h1>{{ tournament.name }}</h1>
+    <p class="ff-sub">Type name or UID ({{ uid_min }}–{{ uid_max }} digits) · tap Fetch for game name</p>
+
+    {% include '_slot_warning.html' %}
+
+    <form id="joinForm" data-submit-url="{{ url_for('join_submit') }}">
+      <div class="ff-card ff-card-inline">
+        <div class="ff-field">
+          <label>WhatsApp / Contact *</label>
+          <input name="leader_contact" required placeholder="01XXXXXXXXX" />
+        </div>
+      </div>
+
+      <div class="ff-card ff-card-inline">
+        <div class="ff-field">
+          <label>Squad Name (optional)</label>
+          <input name="squad_name" placeholder="Leave empty = leader name on lobby" />
+        </div>
+      </div>
+
+      <div class="ff-card ff-players-card">
+        <p class="ff-card-heading">Players ({{ squad_size }})</p>
+        <div class="ff-players-grid">
+          {% for i in range(1, squad_size + 1) %}
+          <div class="player-block" data-i="{{ i }}">
+            <span class="player-title">Player {{ i }}{% if i == 1 %} · Leader{% endif %}</span>
+            <div class="player-row">
+              <input name="player_{{ i }}" class="player-input" data-i="{{ i }}" placeholder="Name or UID" autocomplete="off" />
+              <button type="button" class="lookup-btn ff-btn-sky hidden" data-i="{{ i }}">Fetch</button>
+            </div>
+            <div class="player-status">
+              <p class="ff-uid-loading" style="display:none"></p>
+              <p class="ff-uid-error"></p>
+              <p class="ff-resolved-name"></p>
+            </div>
+            <input type="hidden" class="resolved-input" />
+            <input type="hidden" class="resolved-uid" />
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="ff-card ff-pay-card">
+        <label class="ff-pay-label">Payment — ৳{{ entry_fee }}</label>
+        <input type="hidden" name="payment_mode" value="gateway" />
+
+        <div class="ff-pay-types">
+          {% if gateway_enabled %}
+          <label class="ff-pay-type">
+            <input type="radio" name="pay_type" value="gateway" checked />
+            <span>Online ({{ gateway_name }})</span>
+          </label>
+          {% endif %}
+          {% if enable_manual_payment %}
+          <label class="ff-pay-type">
+            <input type="radio" name="pay_type" value="manual" {% if not gateway_enabled %}checked{% endif %} />
+            <span>Manual (bKash / Nagad)</span>
+          </label>
+          {% endif %}
+        </div>
+
+        <p class="ff-highlight-bn">
+          <strong>গুরুত্বপূর্ণ:</strong> নিচের নম্বর/গেটওয়ে ছাড়া অন্য কোথাও টাকা পাঠাবেন না।
+          Trx ID ভুল দিলে অর্ডার বাতিল হতে পারে।
+        </p>
+
+        {% if gateway_enabled %}
+          <div id="gatewayPay" class="ff-pay-panel">
+            <div class="ff-gateway-pic ff-gateway-pic--selected">
+              <img src="{{ url_for('static', filename='rupantorpay.jpg') }}" alt="Gateway" />
+            </div>
+            <p class="ff-sub" style="margin-top:8px;">After successful online payment your status page updates automatically.</p>
+          </div>
+        {% endif %}
+
+        {% if enable_manual_payment %}
+          <div id="manualPay" class="ff-pay-panel hidden">
+            <p class="ff-sub">Send money then enter Trx ID — admin will verify.</p>
+            <div class="ff-card ff-card-inline ff-manual-card">
+              <div class="ff-field">
+                <label>Method *</label>
+                <select name="manual_method">
+                  <option value="bkash">bKash ({{ bkash }})</option>
+                  <option value="nagad">Nagad ({{ nagad }})</option>
+                </select>
+              </div>
+              <div class="ff-field">
+                <label>Trx ID *</label>
+                <input name="manual_trx" placeholder="e.g. 9AB12CD34" />
+              </div>
+            </div>
+            <div class="ff-copy-row">
+              <button type="button" class="ff-btn-sky ff-copy-btn" data-copy="{{ bkash }}">Copy bKash</button>
+              <button type="button" class="ff-btn-sky ff-copy-btn" data-copy="{{ nagad }}">Copy Nagad</button>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if (not gateway_enabled) and (not enable_manual_payment) %}
+          <p class="ff-err">Payment not configured — contact admin.</p>
+        {% endif %}
+      </div>
+
+      <p id="payPageError" class="ff-err hidden"></p>
+      <p id="formError" class="ff-err hidden"></p>
+      <button type="submit" id="submitBtn" class="ff-btn-gold">Submit Order</button>
+    </form>
+  </div>
+
+  {% include '_warning_popup.html' %}
+
+  <script>
+    window.SQUAD_SIZE = {{ squad_size }};
+    window.FF_UID_MIN = {{ uid_min }};
+    window.FF_UID_MAX = {{ uid_max }};
+    window.FF_SERVER = "{{ ff_server }}";
+    window.GATEWAY_ENABLED = {{ 'true' if gateway_enabled else 'false' }};
+    window.MANUAL_ENABLED = {{ 'true' if enable_manual_payment else 'false' }};
+  </script>
+  <script src="{{ url_for('static', filename='join.js') }}"></script>
+</body>
+</html>

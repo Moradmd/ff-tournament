@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Slots — {{ tournament.name }}{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-2">{{ tournament.name }}</h1>
+<p class="text-slate-400 text-sm mb-6">Public view — kon slot e ke ache</p>
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  {% for s in slots %}
+  <div class="bg-slate-900 border border-slate-700 rounded-lg p-4">
+    <div class="flex justify-between">
+      <span class="font-black text-orange-400 text-lg">Slot {{ s.slot_number }}</span>
+      <span class="text-xs text-slate-500">{{ s.status }}</span>
+    </div>
+    <p class="font-semibold mt-1">{{ s.squad_name or 'খালি' }}</p>
+    <ul class="mt-2 text-sm text-slate-400 space-y-0.5">
+      {% for m in s.members %}
+      <li>• {{ m }}</li>
+      {% else %}
+      <li class="text-slate-600">কেউ নেই</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}অ্যাডমিন লগইন{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-16 bg-slate-900 border border-slate-700 rounded-xl p-6">
+  <h1 class="text-xl font-bold mb-1">অ্যাডমিন লগইন</h1>
+  <p class="text-xs text-slate-500 mb-4">পিন গোপন রাখুন। পাবলিক সাইটে দেখানো হয় না।</p>
+  {% if error %}<p class="text-red-400 text-sm mb-3">{{ error }}</p>{% endif %}
+  <form method="post" class="space-y-4">
+    <input type="password" name="pin" placeholder="পিন" required
+      class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2" />
+    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-black font-semibold py-2 rounded-lg">
+      লগইন
+    </button>
+  </form>
+  <p class="text-xs text-slate-600 mt-4">
+    পিন সেট করতে <code class="text-slate-400">ADMIN_PIN</code> এনভায়রনমেন্টে যোগ করুন (.env / Render)।
+  </p>
+</div>
+{% endblock %}

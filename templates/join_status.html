@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Order Status</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
+</head>
+<body class="ff-form-page ff-status-page">
+  <div class="ff-form-wrap ff-status-wrap">
+
+    {% if order.status == 'pending_payment' %}
+    <p class="ff-status-emoji">💳</p>
+    <h1 class="ff-status-title">Payment Pending</h1>
+    <p class="ff-sub ff-bn-only">অর্ডার #{{ order.id }} — অনলাইন পেমেন্ট সম্পন্ন করুন। অন্য লিংকে টাকা পাঠাবেন না।</p>
+    <a href="{{ url_for('join', token=tournament.join_token) }}" class="ff-btn-gold ff-btn-inline">Pay Again</a>
+
+    {% elif order.status == 'payment_failed' %}
+    <p class="ff-status-emoji">❌</p>
+    <h1 class="ff-status-title ff-status-bad">Payment Failed</h1>
+    <p class="ff-sub ff-bn-only">পেমেন্ট হয়নি — স্লট খালি করা হয়েছে। আবার রেজিস্টার করুন।</p>
+    <a href="{{ url_for('join', token=tournament.join_token) }}" class="ff-btn-gold ff-btn-inline">Register Again</a>
+
+    {% elif order.status == 'rejected' %}
+    <p class="ff-status-emoji">❌</p>
+    <h1 class="ff-status-title ff-status-bad">Order Rejected</h1>
+    <p class="ff-sub ff-bn-only">{{ order.reject_reason or 'পেমেন্ট যাচাই হয়নি' }}</p>
+    <a href="{{ url_for('join', token=tournament.join_token) }}" class="ff-btn-gold ff-btn-inline">Register Again</a>
+
+    {% elif order.status == 'closed' %}
+    <p class="ff-status-emoji">🛑</p>
+    <h1 class="ff-status-title ff-status-bad">Tournament Ended</h1>
+    <p class="ff-sub ff-bn-only">{{ order.reject_reason or 'টুর্নামেন্ট শেষ — এই অর্ডার আর সক্রিয় নয়' }}</p>
+    <a href="{{ url_for('join', token=tournament.join_token) }}" class="ff-btn-gold ff-btn-inline">Register Again</a>
+
+    {% elif order.status == 'pending_approval' %}
+    <div class="ff-approve-loading">
+      <div class="ff-loader" aria-hidden="true" role="status">
+        <span class="ff-loader-ring"></span>
+        <span class="ff-loader-ring ff-loader-ring-2"></span>
+        <span class="ff-loader-ring ff-loader-ring-3"></span>
+        <span class="ff-loader-core"></span>
+      </div>
+      <p class="ff-approve-title">
+        Awaiting Approval<span class="ff-loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      </p>
+      <p class="ff-approve-sub">Order #{{ order.id }}</p>
+      <p class="ff-highlight-bn" style="margin-top:10px;">অ্যাডমিন যাচাই করছেন। ভুয়া মেসেজে টাকা পাঠাবেন না।</p>
+      <a href="{{ url_for('home') }}" class="ff-btn-room-view">Lobby তে যান</a>
+    </div>
+
+    {% include '_my_slot_panel.html' %}
+
+    <div class="ff-receipt ff-card">
+      <p class="ff-receipt-title">Order Receipt</p>
+      <div class="ff-receipt-row"><span>Order</span><strong>#{{ order.id }}</strong></div>
+      <div class="ff-receipt-row"><span>Fee</span><strong>৳{{ entry_fee }}</strong></div>
+      <div class="ff-receipt-row"><span>Payment</span><strong>{{ order.payment_method|upper }}</strong></div>
+      <div class="ff-receipt-row"><span>Trx</span><strong>{{ order.payment_trx }}</strong></div>
+      <div class="ff-receipt-row"><span>Contact</span><strong>{{ order.leader_contact }}</strong></div>
+      {% if order.squad_name and order.squad_name|lower != 'squad' %}
+      <div class="ff-receipt-row"><span>Squad</span><strong>{{ order.squad_name }}</strong></div>
+      {% endif %}
+      <div class="ff-receipt-divider"></div>
+      <p class="ff-receipt-players-label">Squad (4)</p>
+      {% for m in members %}
+      <div class="ff-receipt-player">
+        <span class="ff-receipt-pos">Player {{ m.position }}</span>
+        <span class="ff-receipt-name">{{ m.display_name }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <p class="ff-approved-line">✅ Approved · Slot #{{ order.slot_number }}</p>
+    {% if tournament.tournament_time %}
+    <p class="ff-approved-hint ff-bn-only" style="margin-top:2px;">⏱ {{ tournament.tournament_time }}</p>
+    {% endif %}
+    <p class="ff-approved-hint ff-bn-only">গেমে <strong>শুধু স্লট #{{ order.slot_number }}</strong> এ থাকবেন — অন্য স্লটে গেলে বের করা হবে।</p>
+
+    {% include '_my_slot_panel.html' %}
+
+    {% if whatsapp_group_link %}
+    <div class="ff-receipt ff-card">
+      <p class="ff-receipt-title">Room + WhatsApp</p>
+      {% if tournament.room_id %}
+      <div class="ff-receipt-row">
+        <span>Room ID</span>
+        <span class="ff-copy-cell">
+          <strong>{{ tournament.room_id }}</strong>
+          <button type="button" class="ff-copy-mini" data-copy="{{ tournament.room_id }}">Copy</button>
+        </span>
+      </div>
+      {% endif %}
+      {% if tournament.room_pass %}
+      <div class="ff-receipt-row">
+        <span>Room Pass</span>
+        <span class="ff-copy-cell">
+          <strong>{{ tournament.room_pass }}</strong>
+          <button type="button" class="ff-copy-mini" data-copy="{{ tournament.room_pass }}">Copy</button>
+        </span>
+      </div>
+      {% endif %}
+      <div class="ff-receipt-divider"></div>
+      <p class="ff-sub">Join WhatsApp group for room updates:</p>
+      <a href="{{ whatsapp_group_link }}" class="ff-btn-room-view ff-btn-room-view-block ff-btn-whatsapp" target="_blank" rel="noopener">
+        Join WhatsApp Group for Room ID
+      </a>
+      <a href="{{ url_for('home') }}" class="ff-btn-room-view ff-btn-room-view-block ff-btn-slot-yellow">
+        View Your Slot
+      </a>
+      {% if not tournament.room_id and not tournament.room_pass %}
+      <p class="ff-sub ff-bn-only ff-mt-10"><strong>রুম এখনো তৈরি করি নাই ()</strong> — অ্যাডমিন Room ID/Pass দিলে এখানে দেখাবে।</p>
+      {% if room_schedule_label %}
+      <p class="ff-approved-hint ff-bn-only ff-mt-6">রুম দেওয়ার সময়: <strong>{{ room_schedule_label }}</strong></p>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% include '_slot_warning.html' %}
+
+    <div class="ff-receipt ff-card">
+      <p class="ff-receipt-title">Order Receipt</p>
+      <div class="ff-receipt-row"><span>Order</span><strong>#{{ order.id }}</strong></div>
+      <div class="ff-receipt-row"><span>Fee</span><strong>৳{{ entry_fee }}</strong></div>
+      <div class="ff-receipt-row"><span>Payment</span><strong>{{ order.payment_method|upper }}</strong></div>
+      <div class="ff-receipt-row"><span>Trx</span><strong>{{ order.payment_trx }}</strong></div>
+      <div class="ff-receipt-row"><span>Contact</span><strong>{{ order.leader_contact }}</strong></div>
+      {% if order.squad_name and order.squad_name|lower != 'squad' %}
+      <div class="ff-receipt-row"><span>Squad</span><strong>{{ order.squad_name }}</strong></div>
+      {% endif %}
+      <div class="ff-receipt-divider"></div>
+      <p class="ff-receipt-players-label">Squad (4)</p>
+      {% for m in members %}
+      <div class="ff-receipt-player">
+        <span class="ff-receipt-pos">Player {{ m.position }}</span>
+        <span class="ff-receipt-name">{{ m.display_name }}</span>
+      </div>
+      {% endfor %}
+      <div style="margin-top:10px;">
+        <button type="button" id="ffPlayerChangeBtn" class="ff-btn-room-view ff-btn-room-view-block" style="border-color:var(--ff-teal);color:var(--ff-teal);font-size:12px;padding:6px 14px;">
+          🔄 Player Change ({{ order.player_changes_left if order.player_changes_left is not none else 2 }} left)
+        </button>
+      </div>
+    </div>
+
+    {% if not whatsapp_group_link %}
+    <a href="{{ url_for('home') }}" class="ff-btn-room-view ff-btn-room-view-block ff-btn-slot-yellow">View Your Slot</a>
+    {% endif %}
+    {% endif %}
+
+    <button type="button" onclick="location.reload()" class="ff-refresh-btn">Refresh</button>
+  </div>
+
+  <!-- Player Change Modal -->
+  <div id="ffChangeModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeChangeModal()">
+    <div style="background:#12122a;border:1px solid rgba(45,212,191,0.3);border-radius:16px;padding:24px;max-width:380px;width:90%;margin:20px;box-sizing:border-box;position:relative;">
+      <button type="button" onclick="closeChangeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--ff-muted);font-size:20px;cursor:pointer;">✕</button>
+      <h3 style="margin:0 0 14px;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:0.04em;color:var(--ff-teal);">Player Change</h3>
+      <p style="margin:0 0 12px;font-size:12px;color:var(--ff-muted);">কাকে বের করতে চান সেটি নির্বাচন করুন এবং নতুন খেলোয়াড়ের নাম দিন</p>
+      <div style="margin-bottom:12px;">
+        {% for m in members %}
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;background:rgba(45,212,191,0.04);border:1px solid rgba(45,212,191,0.12);border-radius:8px;cursor:pointer;">
+          <input type="radio" name="change_pos" value="{{ m.position }}" {% if loop.first %}checked{% endif %} style="accent-color:var(--ff-teal);">
+          <span style="font-size:13px;"><strong>Player {{ m.position }}</strong>: {{ m.display_name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:nowrap;">
+        <input id="changePlayerInput" type="text" placeholder="Name or UID" style="flex:1;min-width:0;padding:10px 12px;font-size:14px;border:1px solid var(--ff-teal);border-radius:8px;background:#1a1a2e;color:var(--ff-text);box-sizing:border-box;">
+        <button type="button" id="changeFetchBtn" style="flex-shrink:0;padding:10px 12px;font-size:11px;font-weight:700;border:none;border-radius:8px;background:var(--ff-teal);color:#0a0a1a;cursor:pointer;white-space:nowrap;display:none;">Fetch</button>
+      </div>
+      <input type="hidden" id="changeResolvedUid" value="">
+      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="changeSaveBtn" onclick="saveChange()" style="flex:1;padding:10px;font-size:13px;font-weight:700;border:none;border-radius:24px;background:var(--ff-teal);color:#0a0a1a;cursor:pointer;">Save Change</button>
+        <button type="button" onclick="closeChangeModal()" style="flex:1;padding:10px;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,0.15);border-radius:24px;background:transparent;color:var(--ff-text);cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openChangeModal() { document.getElementById('ffChangeModal').style.display = 'flex'; }
+    function closeChangeModal() { document.getElementById('ffChangeModal').style.display = 'none'; }
+    document.getElementById('ffPlayerChangeBtn').addEventListener('click', openChangeModal);
+  </script>
+
+  {% if order.status == 'pending_approval' %}
+  <script>
+    setTimeout(function () { location.reload(); }, 8000);
+  </script>
+  {% endif %}
+
+  <script>
+    (function () {
+      try {
+        localStorage.setItem("ff_last_status_url", window.location.pathname + window.location.search);
+        localStorage.setItem("ff_join_epoch", "{{ tournament.join_epoch or 1 }}");
+        {% if order.status == 'approved' %}
+          localStorage.setItem(
+            "ff_last_room_url",
+            "{{ url_for('room_view', order_id=order.id, t=view_token) }}"
+          );
+        {% endif %}
+      } catch (e) {}
+    })();
+  </script>
+
+  <script>
+    (function () {
+      async function copyText(txt) {
+        txt = String(txt || "").trim();
+        if (!txt) return false;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(txt);
+            return true;
+          }
+        } catch (e) {}
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = txt;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          return true;
+        } catch (e) {}
+        return false;
+      }
+
+      document.querySelectorAll(".ff-copy-mini").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          var val = btn.getAttribute("data-copy") || "";
+          var ok = await copyText(val);
+          var old = btn.textContent;
+          btn.textContent = ok ? "Copied" : "Failed";
+          setTimeout(function () { btn.textContent = old; }, 900);
+        });
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var orderId = {{ order.id }};
+      var viewToken = "{{ view_token }}";
+      var changesLeftEl = document.getElementById('ffPlayerChangeBtn');
+      function isUid(v) { return /^\d+$/.test(v) && v.length >= 6; }
+      function toggleFetch() {
+        var inp = document.getElementById('changePlayerInput');
+        var btn = document.getElementById('changeFetchBtn');
+        if (!inp || !btn) return;
+        btn.style.display = isUid(inp.value.trim()) ? '' : 'none';
+      }
+      document.getElementById('changePlayerInput').addEventListener('input', toggleFetch);
+      document.getElementById('changeFetchBtn').addEventListener('click', function () {
+        var inp = document.getElementById('changePlayerInput');
+        var uid = inp.value.trim();
+        if (!isUid(uid)) { alert('Enter a valid UID (6+ digits)'); return; }
+        var btn = this;
+        btn.textContent = 'Fetching...';
+        btn.disabled = true;
+        fetch('/api/lookup-uid?uid=' + encodeURIComponent(uid))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && data.name) {
+              inp.value = data.name;
+              document.getElementById('changeResolvedUid').value = uid;
+              btn.style.display = 'none';
+            } else {
+              alert('UID not found — enter name manually');
+            }
+            btn.textContent = 'Fetch';
+            btn.disabled = false;
+          })
+          .catch(function () {
+            alert('Fetch failed — enter name manually');
+            btn.textContent = 'Fetch';
+            btn.disabled = false;
+          });
+      });
+      window.saveChange = function () {
+        var posEl = document.querySelector('input[name="change_pos"]:checked');
+        if (!posEl) { alert('Select a player to replace'); return; }
+        var pos = posEl.value;
+        var val = document.getElementById('changePlayerInput').value.trim();
+        if (!val) { alert('Enter a player name or UID'); return; }
+        var resolvedUid = document.getElementById('changeResolvedUid').value.trim();
+        var name = val;
+        var uid = resolvedUid;
+        var btn = document.getElementById('changeSaveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        var fd = new FormData();
+        fd.append('position', pos);
+        fd.append('display_name', name);
+        fd.append('uid', uid);
+        fetch('/order/' + orderId + '/change-player/' + viewToken, { method: 'POST', body: fd })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              var players = document.querySelectorAll('.ff-receipt-player');
+              players.forEach(function (p) {
+                var label = p.querySelector('.ff-receipt-pos');
+                if (label && label.textContent.indexOf('Player ' + pos) !== -1) {
+                  p.querySelector('.ff-receipt-name').textContent = name;
+                }
+              });
+              var left = data.changes_left;
+              changesLeftEl.textContent = '🔄 Player Change (' + left + ' left)';
+              if (left < 1) { changesLeftEl.disabled = true; changesLeftEl.style.opacity = '0.5'; }
+              closeChangeModal();
+            } else {
+              alert(data.error || 'Failed to save');
+              btn.disabled = false;
+              btn.textContent = 'Save Change';
+            }
+          })
+          .catch(function () {
+            alert('Network error');
+            btn.disabled = false;
+            btn.textContent = 'Save Change';
+          });
+      };
+      {% if order.player_changes_left is not none and order.player_changes_left < 1 %}
+      changesLeftEl.disabled = true;
+      changesLeftEl.style.opacity = '0.5';
+      {% endif %}
+    })();
+  </script>
+</body>
+</html>

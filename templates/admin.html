@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <p class="text-xs text-slate-500">Admin Panel</p>
+    <h1 class="text-2xl sm:text-3xl font-black text-orange-400 leading-tight">{{ tournament.name }}</h1>
+    <p class="text-xs text-slate-500 mt-1">অনুমোদন → স্লট পূর্ণ · প্রত্যাখ্যান → স্লট খালি।</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{{ url_for('home') }}" class="text-sm px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700">পাবলিক লবি</a>
+    <a href="{{ url_for('export_text') }}" class="text-sm px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700">এক্সপোর্ট</a>
+    <a href="{{ url_for('admin_history') }}" class="text-sm px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700">ইতিহাস</a>
+    <a href="{{ url_for('admin_logout') }}" class="text-sm px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300">লগআউট</a>
+  </div>
+</div>
+
+<section class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="p-4 bg-slate-900 border border-slate-700 rounded-xl">
+    <p class="text-xs text-slate-500">Pending approvals</p>
+    <p class="text-2xl font-black text-amber-400">{{ pending|length }}</p>
+  </div>
+  <div class="p-4 bg-slate-900 border border-slate-700 rounded-xl">
+    <p class="text-xs text-slate-500">Slots status</p>
+    <p class="text-sm font-semibold mt-1">
+      <span class="text-emerald-300">Registered</span>
+    </p>
+    <p class="text-xs text-slate-600 mt-1">Pending payment: {{ pending_payment_count }}</p>
+  </div>
+  <div class="p-4 bg-slate-900 border border-slate-700 rounded-xl">
+    <p class="text-xs text-slate-500">Entry fee</p>
+    <p class="text-2xl font-black">৳{{ entry_fee }}</p>
+  </div>
+  <div class="p-4 bg-slate-900 border border-slate-700 rounded-xl">
+    <p class="text-xs text-slate-500">Online payment</p>
+    <p class="text-sm font-semibold {% if gateway_enabled %}text-emerald-400{% else %}text-slate-400{% endif %}">
+      {% if gateway_enabled %}Enabled ({{ gateway_name }}){% else %}Disabled{% endif %}
+    </p>
+    <p class="text-xs text-slate-600 mt-1">Manual: bKash {{ bkash }} · Nagad {{ nagad }}</p>
+  </div>
+</section>
+
+{% if request.args.get('cleared') %}
+<div class="mt-4 p-3 rounded-xl border border-emerald-700/40 bg-emerald-900/20 text-emerald-200 text-sm">
+  ✅ Tournament clear done. Ekhon sob slot empty.
+</div>
+{% elif request.args.get('error') == 'confirm' %}
+<div class="mt-4 p-3 rounded-xl border border-red-700/40 bg-red-900/20 text-red-200 text-sm">
+  ❌ Confirm text thik nai. "CLEAR" likhe submit koro.
+</div>
+{% elif request.args.get('room') %}
+<div class="mt-4 p-3 rounded-xl border border-emerald-700/40 bg-emerald-900/20 text-emerald-200 text-sm">
+  {% if request.args.get('room') == 'cleared' %}
+    ✅ Room ID/Pass cleared.
+  {% else %}
+    ✅ Room info updated.
+  {% endif %}
+</div>
+{% elif request.args.get('updated') %}
+<div class="mt-4 p-3 rounded-xl border border-emerald-700/40 bg-emerald-900/20 text-emerald-200 text-sm">
+  ✅ Player updated.
+</div>
+{% endif %}
+
+<section class="mt-6 p-4 bg-slate-900 border border-slate-700 rounded-xl">
+  <h2 class="text-base font-bold">রুম তথ্য (অনুমোদিত খেলোয়াড়)</h2>
+  <p class="text-xs text-slate-500 mt-1">
+    পেমেন্ট করা খেলোয়াড়রা স্ট্যাটাস/রুম পেজে এটি দেখবেন।
+  </p>
+  <form method="post" action="{{ url_for('admin_update_room') }}" class="mt-3 grid gap-2 sm:grid-cols-2">
+    <div>
+      <label class="text-xs text-slate-500">Room ID</label>
+      <input name="room_id" value="{{ tournament.room_id or '' }}"
+        class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="123456" />
+    </div>
+    <div>
+      <label class="text-xs text-slate-500">Room Password</label>
+      <input name="room_pass" value="{{ tournament.room_pass or '' }}"
+        class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="pass" />
+    </div>
+    <div>
+      <label class="text-xs text-slate-500">WhatsApp Group Link</label>
+      <input name="whatsapp_group_link" value="{{ tournament.whatsapp_group_link or whatsapp_group_link }}"
+        class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="https://chat.whatsapp.com/..." />
+    </div>
+    <div>
+      <label class="text-xs text-slate-500">Room দেওয়ার সময় (optional)</label>
+      <input type="datetime-local" name="room_available_at" value="{{ room_at_input }}"
+        class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm" />
+      <p class="text-[10px] text-slate-600 mt-1">খালি = আইডি/পাস সেভ করলেই সাথে সাথে দেখাবে</p>
+    </div>
+    <div>
+      <label class="text-xs text-slate-500">টুর্নামেন্টের সময় (optional)</label>
+      <div class="flex gap-1 mt-1 mb-1 flex-wrap">
+        <button type="button" onclick="setTime('রাত ৮টা')" class="bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">রাত ৮টা</button>
+        <button type="button" onclick="setTime('রাত ৯টা')" class="bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">রাত ৯টা</button>
+        <button type="button" onclick="setTime('রাত ১০টা')" class="bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">রাত ১০টা</button>
+        <button type="button" onclick="setTime('রাত ১১টা')" class="bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">রাত ১১টা</button>
+        <button type="button" onclick="setTime('দুপুর ২টা')" class="bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">দুপুর ২টা</button>
+      </div>
+      <input name="tournament_time" id="tournamentTimeInput" value="{{ tournament.tournament_time or '' }}"
+        class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="যেমন: রাত ৯টা, 8:00 PM" />
+      <p class="text-[10px] text-slate-600 mt-1">উপরে ক্লিক করে সিলেক্ট করুন বা নিজে লিখুন</p>
+    </div>
+    <div>
+      <label class="text-xs text-slate-500">রুম সংক্রান্ত তথ্য (optional)</label>
+      <textarea name="room_info" rows="2" class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm" placeholder="যেমন: লবিতে মেসেজ দেয়া হবে, নিচে চেক করুন">{{ tournament.room_info or '' }}</textarea>
+      <p class="text-[10px] text-slate-600 mt-1">রুম ইনফো মডালে ইউজারদের দেখাবে</p>
+    </div>
+    <div class="flex flex-col justify-end">
+      <button type="submit" class="bg-orange-500 hover:bg-orange-400 text-black font-semibold rounded-lg px-4 py-2 text-sm">
+        Save Room Info
+      </button>
+    </div>
+  </form>
+  {% if room_schedule_label %}
+  <p class="mt-2 text-xs text-amber-300/90">Player দেখবে: Room দেওয়ার সময় — <strong>{{ room_schedule_label }}</strong></p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('admin_clear_room') }}" class="mt-2">
+    <button type="submit"
+      class="text-xs font-semibold px-3 py-2 rounded-lg bg-red-900/40 border border-red-700/40 text-red-200 hover:bg-red-900/60"
+      onclick="return confirm('Room ID/Pass clear korle user der page e ar show hobe na. Continue?')">
+      Clear Room ID/Pass
+    </button>
+  </form>
+
+  <div class="mt-3 text-xs text-slate-400">
+    WhatsApp group: <a class="text-sky-300 hover:underline break-all" href="{{ whatsapp_group_link }}" target="_blank">{{ whatsapp_group_link }}</a>
+  </div>
+</section>
+
+<section class="mt-5 p-4 bg-slate-900 border border-orange-500/40 rounded-xl">
+  <p class="text-sm text-slate-400">Player registration link (WhatsApp e pathao):</p>
+  <div class="mt-2 flex flex-col gap-2">
+    <a href="{{ join_link }}" class="text-sky-400 text-sm break-all hover:underline">{{ join_link }}</a>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button"
+        onclick="navigator.clipboard.writeText('{{ join_link }}');this.textContent='Copied!'"
+        class="text-xs px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold">
+        Copy join link
+      </button>
+      <span class="text-xs text-slate-500">Fee: ৳{{ entry_fee }}</span>
+    </div>
+  </div>
+</section>
+
+{% if pending %}
+<section class="mt-8">
+  <h2 class="text-lg font-bold text-amber-400">⏳ Approval chai ({{ pending|length }})</h2>
+  <div class="space-y-4 mt-4">
+    {% for o in pending %}
+    <div class="bg-slate-900 border border-amber-600/50 rounded-xl p-4">
+      <div class="flex flex-wrap justify-between items-start gap-2">
+        <div>
+          <p class="font-bold">অর্ডার #{{ o.id }} ·
+            {% if o.squad_name and o.squad_name|lower != 'squad' %}{{ o.squad_name }}
+            {% elif o.members %}{{ o.members[0].display_name }}
+            {% else %}(নাম নেই){% endif %}
+          </p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            যোগাযোগ: <span class="text-slate-300">{{ o.leader_contact }}</span>
+            {% if o.slot_number %} · <span class="text-amber-300 font-semibold">Reserved Slot #{{ o.slot_number }}</span>{% endif %}
+          </p>
+        </div>
+        <span class="text-xs uppercase bg-amber-900/50 text-amber-300 px-2 py-0.5 rounded">
+          {{ o.payment_method }} · {{ o.payment_trx }}
+        </span>
+      </div>
+
+      <div class="mt-3 grid gap-2 sm:grid-cols-2">
+        {% for m in o.members %}
+        <div class="bg-slate-950/40 border border-slate-800 rounded-lg p-2">
+          <p class="text-xs text-slate-500">Player {{ m.position }}</p>
+          <p class="text-sm font-semibold">{{ m.display_name }}</p>
+          {% if m.uid %}<p class="text-xs text-slate-500">UID: {{ m.uid }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="flex flex-wrap gap-2 mt-4 items-center">
+        <form method="post" action="{{ url_for('approve_order', order_id=o.id) }}">
+          <button type="submit"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg"
+            onclick="return confirm('Approve kore slot e add korba?')">
+            ✓ Approve
+          </button>
+        </form>
+        <form method="post" action="{{ url_for('reject_order', order_id=o.id) }}" class="flex gap-2 flex-1 min-w-[240px]">
+          <input name="reason" placeholder="Reject reason (optional)"
+            class="flex-1 text-sm bg-slate-800 border border-slate-600 rounded-lg px-3 py-2" />
+          <button type="submit" class="text-red-300 hover:text-red-200 text-sm px-3"
+            onclick="return confirm('Reject korle slot release hobe. Continue?')">
+            Reject
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<p class="text-slate-500 mt-6 text-sm">Ekhon kono pending order nai.</p>
+{% endif %}
+
+<section class="mt-10">
+  <h2 class="text-lg font-bold mb-3">Slots overview ({{ filled }}/48)</h2>
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {% for slot in slots %}
+    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3">
+      <div class="flex justify-between items-center">
+        <span class="font-black text-orange-400">Slot {{ slot.slot_number }}</span>
+        <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded
+          {% if slot.status == 'registered' %}bg-emerald-900/40 text-emerald-300 border border-emerald-700/40
+          {% else %}bg-slate-800 text-slate-300 border border-slate-700{% endif %}">
+          {% if slot.status == 'registered' %}registered{% else %}empty{% endif %}
+        </span>
+        {% if slot.status == 'registered' %}
+        <form method="post" action="{{ url_for('release_slot', slot_id=slot.slot_id) }}" onsubmit="return confirm('Clear korle ei slot er sob player remove hoye jabe. Continue?')">
+          <button type="submit"
+            class="text-xs font-semibold px-2 py-1 rounded bg-red-900/40 border border-red-700/40 text-red-200 hover:bg-red-900/60">
+            Clear
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      <p class="text-sm font-medium mt-1">{{ slot.display_label or slot.squad_name or '—' }}</p>
+      <ul class="text-xs text-slate-400 mt-1">
+        {% for p in slot.players %}
+        <li class="flex items-center gap-1" data-name="{% if p %}{{ p.name }}{% endif %}" data-uid="{% if p %}{{ p.uid }}{% endif %}">
+          {% if p %}
+            <span>{{ loop.index }}. {{ p.name }}{% if p.uid %} <span class="text-slate-600">({{ p.uid }})</span>{% endif %}</span>
+            {% if slot.status == 'registered' and slot.slot_id %}
+            <button type="button" class="text-teal-400 hover:text-teal-300 ml-auto text-[10px] font-semibold" onclick="toggleEdit({{ slot.slot_id }}, {{ loop.index }}, this)">✎</button>
+            {% endif %}
+          {% else %}
+            <span>{{ loop.index }}. —</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if slot.status == 'registered' and slot.slot_id %}
+      <div id="edit-area-{{ slot.slot_id }}" class="mt-2 pt-2 border-t border-slate-700" style="display:none;">
+        <form method="post" action="{{ url_for('admin_edit_slot_player', slot_id=slot.slot_id) }}" class="space-y-1">
+          <input type="hidden" name="position" id="edit-pos-{{ slot.slot_id }}" value="">
+          <div class="flex gap-1">
+            <input name="display_name" id="edit-name-{{ slot.slot_id }}" placeholder="Name" class="flex-1 text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1">
+            <input name="uid" id="edit-uid-{{ slot.slot_id }}" placeholder="UID" class="w-20 text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1">
+            <button type="submit" class="text-xs bg-teal-600 hover:bg-teal-500 text-white font-semibold px-2 py-1 rounded">Save</button>
+            <button type="button" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded" onclick="toggleEdit({{ slot.slot_id }})">✕</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mt-10 border border-red-700/30 bg-red-950/30 rounded-xl p-4">
+  <h2 class="text-base font-bold text-red-200">Danger zone</h2>
+  <p class="text-xs text-red-200/80 mt-1">
+    Tournament sesh hole ekbar e sob slot clear korte parba. Eta undo kora jabe na.
+    (History/orders thakbe, just slots empty hobe.)
+  </p>
+  <form method="post" action="{{ url_for('admin_clear_tournament') }}" class="mt-3 flex flex-col sm:flex-row gap-2">
+    <input name="confirm" placeholder="Type CLEAR"
+      class="flex-1 bg-slate-900 border border-red-700/40 rounded-lg px-3 py-2 text-sm" />
+    <button type="submit"
+      class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold text-sm"
+      onclick="return confirm('Are you sure? Sob slot empty hobe.')">
+      All Clear Tournament
+    </button>
+  </form>
+</section>
+
+<p class="mt-6 text-xs text-slate-600">
+  Tip: PUBLIC_BASE_URL set thakle payment callback + join link thik thakbe.
+</p>
+<script>
+function setTime(val) {
+  document.getElementById('tournamentTimeInput').value = val;
+}
+function toggleEdit(slotId, pos, btn) {
+  var area = document.getElementById('edit-area-' + slotId);
+  if (!area) return;
+  if (area.style.display !== 'block') {
+    document.getElementById('edit-pos-' + slotId).value = pos;
+    if (btn) {
+      var li = btn.closest('li');
+      document.getElementById('edit-name-' + slotId).value = li.getAttribute('data-name') || '';
+      document.getElementById('edit-uid-' + slotId).value = li.getAttribute('data-uid') || '';
+    }
+    area.style.display = 'block';
+  } else {
+    area.style.display = 'none';
+  }
+}
+</script>
+{% endblock %}

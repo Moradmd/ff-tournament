@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>আমার অর্ডার</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+</head>
+<body class="ff-form-page ff-status-page">
+  <div class="ff-form-wrap ff-status-wrap">
+    <p class="ff-status-emoji">🧾</p>
+    <h1 class="ff-status-title">আমার অর্ডার</h1>
+    <p class="ff-sub" style="max-width: 420px;">
+      যে নম্বর দিয়ে অর্ডার করেছেন সেটা দিলে স্ট্যাটাস/ইতিহাস দেখা যাবে।
+      <br/>পেমেন্ট না থাকলে সেখান থেকেই পেমেন্ট করতে বলা হবে।
+    </p>
+
+    {% if error %}
+      <p class="ff-err">{{ error }}</p>
+    {% endif %}
+
+    <form class="ff-room-form" method="post">
+      <div class="ff-card ff-card-inline ff-room-card">
+        <div class="ff-field">
+          <label>হোয়াটসঅ্যাপ / যোগাযোগ</label>
+          <input id="contactInp" name="contact" value="{{ contact or '' }}" placeholder="01XXXXXXXXX" />
+        </div>
+      </div>
+      <button type="submit" class="ff-btn-room-view ff-btn-room-view-block ff-max-320">
+        খুঁজুন
+      </button>
+    </form>
+
+    {% if orders and orders|length %}
+      <div class="ff-receipt ff-card ff-mt-14">
+        <p class="ff-receipt-title">ইতিহাস (সর্বশেষ {{ orders|length }})</p>
+        {% for o in orders %}
+          <div class="ff-receipt-row">
+            <span>#{{ o.id }} · {{ (o.status or '')|replace('_',' ') }}</span>
+            <strong>
+              {% if o.slot_number %}স্লট {{ o.slot_number }}{% else %}—{% endif %}
+            </strong>
+          </div>
+          <div class="ff-receipt-row">
+            <span>পেমেন্ট</span>
+            <strong>{{ (o.payment_method or '')|upper }} · {{ o.payment_trx }}</strong>
+          </div>
+          <div class="ff-receipt-row">
+            <span>সময়</span>
+            <strong>{{ o.created_at }}</strong>
+          </div>
+          {% if o.view_token %}
+            {% if o.status == 'approved' or o.status == 'pending_approval' %}
+            <a href="{{ url_for('room_view', order_id=o.id, t=o.view_token) }}"
+               class="ff-btn-room-view ff-btn-room-view-block ff-max-260 ff-mt-10">
+              রুম আইডি/পাস
+            </a>
+            {% else %}
+            <a href="{{ url_for('join_status', order_id=o.id, t=o.view_token) }}"
+               class="ff-btn-room-view ff-btn-room-view-block ff-max-260 ff-mt-10">
+              স্ট্যাটাস খুলুন
+            </a>
+            {% endif %}
+          {% endif %}
+          {% if not loop.last %}<div class="ff-receipt-divider"></div>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <a href="{{ join_link }}" class="ff-btn-room-view ff-btn-room-view-block ff-max-320">
+      টুর্নামেন্টে যোগ দিন
+    </a>
+    <a href="{{ url_for('home') }}" class="ff-btn-room-view ff-btn-room-view-block ff-btn-back ff-max-320">
+      লবিতে ফিরে যান
+    </a>
+  </div>
+
+  <script>
+    (function () {
+      try {
+        var inp = document.getElementById("contactInp");
+        if (!inp) return;
+        if (!inp.value) {
+          var saved = localStorage.getItem("ff_contact") || "";
+          if (saved) inp.value = saved;
+        }
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

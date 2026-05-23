@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Done — Slot {{ slot.slot_number }}{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto text-center mt-16">
+  <p class="text-5xl mb-4">✅</p>
+  <h1 class="text-2xl font-bold text-emerald-400">Registration Complete</h1>
+  <p class="text-slate-400 mt-2">Slot <strong class="text-orange-400">#{{ slot.slot_number }}</strong> — {{ slot.squad_name }}</p>
+  <p class="text-sm text-slate-500 mt-6">Custom room e <strong>Slot {{ slot.slot_number }}</strong> e join korbe. Admin verify korbe.</p>
+  <a href="/slots" class="inline-block mt-8 text-orange-400 hover:underline">সব slot দেখো</a>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Room Info</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+</head>
+<body class="ff-form-page ff-status-page">
+  <div class="ff-form-wrap ff-status-wrap">
+    <p class="ff-approved-line">✅ Approved · Slot #{{ order.slot_number }}</p>
+    <p class="ff-approved-hint">এখানেই Room ID/Pass দেওয়া হলো</p>
+
+    <div class="ff-receipt ff-card">
+      <p class="ff-receipt-title">Room Info</p>
+      {% if tournament.room_id %}
+      <div class="ff-receipt-row">
+        <span>Room ID</span>
+        <span style="display:flex; align-items:center; gap:8px; justify-content:flex-end;">
+          <strong>{{ tournament.room_id }}</strong>
+          <button type="button" class="ff-copy-mini" data-copy="{{ tournament.room_id }}"
+            style="font-size:11px; padding:4px 8px; border-radius:6px; border:1px solid rgba(240,192,64,.35); background:rgba(240,192,64,.12); color:#f0c040;">
+            Copy
+          </button>
+        </span>
+      </div>
+      {% endif %}
+      {% if tournament.room_pass %}
+      <div class="ff-receipt-row">
+        <span>Room Pass</span>
+        <span style="display:flex; align-items:center; gap:8px; justify-content:flex-end;">
+          <strong>{{ tournament.room_pass }}</strong>
+          <button type="button" class="ff-copy-mini" data-copy="{{ tournament.room_pass }}"
+            style="font-size:11px; padding:4px 8px; border-radius:6px; border:1px solid rgba(240,192,64,.35); background:rgba(240,192,64,.12); color:#f0c040;">
+            Copy
+          </button>
+        </span>
+      </div>
+      {% endif %}
+      {% if not tournament.room_id and not tournament.room_pass %}
+      <p class="ff-sub" style="margin-top:10px;">Room info admin pore add korbe.</p>
+      {% endif %}
+
+      {% if whatsapp_group_link %}
+      <div class="ff-receipt-divider"></div>
+      <p class="ff-sub" style="margin: 0 0 8px;">Room ID পেতে WhatsApp group এ join করো:</p>
+      <a href="{{ whatsapp_group_link }}" class="ff-btn-room-view ff-btn-room-view-block ff-btn-whatsapp" target="_blank" rel="noopener">
+        Join WhatsApp Group for Room ID
+      </a>
+      <a href="{{ url_for('home') }}" class="ff-btn-room-view ff-btn-room-view-block ff-btn-slot-yellow">
+        আপনার স্লট দেখুন
+      </a>
+      {% endif %}
+    </div>
+
+    {% if not whatsapp_group_link %}
+    <a href="{{ url_for('home') }}" class="ff-btn-room-view ff-btn-room-view-block ff-btn-slot-yellow">আপনার স্লট দেখুন</a>
+    {% endif %}
+  </div>
+
+  <script>
+    (function () {
+      try {
+        localStorage.setItem("ff_last_room_url", window.location.pathname + window.location.search);
+        localStorage.setItem("ff_join_epoch", "{{ tournament.join_epoch or 1 }}");
+      } catch (e) {}
+    })();
+  </script>
+
+  <script>
+    (function () {
+      async function copyText(txt) {
+        txt = String(txt || "").trim();
+        if (!txt) return false;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(txt);
+            return true;
+          }
+        } catch (e) {}
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = txt;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          return true;
+        } catch (e) {}
+        return false;
+      }
+
+      document.querySelectorAll(".ff-copy-mini").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          var val = btn.getAttribute("data-copy") || "";
+          var ok = await copyText(val);
+          var old = btn.textContent;
+          btn.textContent = ok ? "Copied" : "Copy fail";
+          setTimeout(function () { btn.textContent = old; }, 900);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<div id="ffWarningModal" class="ff-modal ff-modal-danger" role="dialog" aria-modal="true" aria-labelledby="ffWarningModalTitle" hidden>
+  <div class="ff-modal-backdrop" data-ff-modal-close></div>
+  <div class="ff-modal-panel">
+    <div class="ff-modal-header">
+      <span class="ff-modal-icon" aria-hidden="true">🚫</span>
+      <h2 id="ffWarningModalTitle" class="ff-modal-title">কঠোর নিয়ম</h2>
+    </div>
+    <div class="ff-modal-body">
+      <p><strong>নিজের স্লট</strong> ছাড়া অন্য স্লটে থাকা <strong>নিষেধ</strong>।</p>
+      <p class="ff-modal-kick">অন্য স্লটে গেলে <strong>সরাসরি টুর্নামেন্ট থেকে বের করে দেওয়া হবে — কোনো ওয়ার্নিং নেই</strong>।</p>
+    </div>
+    <button type="button" class="ff-btn-gold ff-modal-btn" data-ff-modal-close>বুঝলাম</button>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById("ffWarningModal");
+  if (!modal) return;
+  function openModal() {
+    modal.hidden = false;
+    modal.classList.add("is-open");
+    document.body.classList.add("ff-modal-open");
+  }
+  function closeModal() {
+    modal.classList.remove("is-open");
+    document.body.classList.remove("ff-modal-open");
+    modal.hidden = true;
+    try { sessionStorage.setItem("ff_slot_warning_popup", "1"); } catch (e) {}
+  }
+  modal.querySelectorAll("[data-ff-modal-close]").forEach(function (el) {
+    el.addEventListener("click", closeModal);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && modal.classList.contains("is-open")) closeModal();
+  });
+  try { if (sessionStorage.getItem("ff_slot_warning_popup")) return; } catch (e) {}
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", openModal);
+  } else { openModal(); }
+})();
+</script>

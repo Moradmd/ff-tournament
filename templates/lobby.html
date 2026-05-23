@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>{{ tournament.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
+</head>
+<body class="ff-page">
+  <div class="ff-wrap">
+    <header class="ff-room-header">
+      <h1 class="ff-room-title">{{ tournament.name }}</h1>
+      <p class="ff-room-sub">Verified Custom Room · Live Squad Board</p>
+      <p class="ff-room-meta">Entry Fee: ৳{{ entry_fee }}</p>
+      {% if tournament.tournament_time %}
+      <p class="ff-room-meta ff-room-time" style="margin-top:2px;">⏱ {{ tournament.tournament_time }}</p>
+      {% endif %}
+    </header>
+
+    <div class="ff-top-bar">
+      <div class="ff-count">
+        <svg class="ff-icon-players" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+        <span>{{ filled }}/{{ max_players }}</span>
+      </div>
+      <span class="ff-status">
+        {% if filled < 4 %}Low players ({{ filled }}/4){% else %}Waiting for players{% endif %}
+      </span>
+      <div class="ff-top-bar-actions" style="display:flex;gap:8px;align-items:center;margin-left:auto;">
+        <a href="#" id="roomInfoBtn" class="ff-btn-room-view ff-link-lobby ff-lobby-room-link">
+          Room ID / Pass
+        </a>
+        {% if slots_full %}
+          <a href="#" id="joinFullBtn" class="ff-join-btn">Join Tournament</a>
+        {% else %}
+          <a href="{{ url_for('join', token=tournament.join_token) }}" id="joinBtn" class="ff-join-btn">Join Tournament</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="ff-slots">
+      {% for slot in slots %}
+      <div class="ff-slot-block">
+        <div class="ff-squad-label">{% if slot.squad_name %}{{ slot.squad_name }}{% else %}—{% endif %}</div>
+        <div class="ff-team">
+          <div class="ff-team-num">{{ slot.slot_number }}</div>
+          <div class="ff-team-rows">
+            {% for p in slot.players %}
+            <div class="ff-player-row {% if p %}is-filled{% else %}is-empty{% endif %}"{% if not p %} aria-hidden="true"{% endif %}>
+              {% if p %}
+              <span class="ff-player-name" data-len="{{ p.name|length }}" title="{% if p.uid %}UID: {{ p.uid }}{% endif %}">{{ p.name }}</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <p class="ff-footer-note">Only admin-approved squads are listed · Updated live</p>
+  </div>
+
+  {% if slots_full %}
+  <div id="ffFullModal" class="ff-modal" role="dialog" aria-modal="true" aria-labelledby="ffFullModalTitle" hidden>
+    <div class="ff-modal-backdrop" data-ff-modal-close></div>
+    <div class="ff-modal-panel">
+      <div class="ff-modal-header">
+        <span class="ff-modal-icon" aria-hidden="true">⛔</span>
+        <h2 id="ffFullModalTitle" class="ff-modal-title">Slots Full</h2>
+      </div>
+      <div class="ff-modal-body">
+        <p><strong>সব ১২টি স্লট পূর্ণ।</strong> এখন আর নতুন রেজিস্ট্রেশন নেওয়া হচ্ছে না।</p>
+        <p>আগে যোগ দিয়ে থাকলে <strong>Room ID / Pass</strong> বাটন থেকে স্ট্যাটাস দেখুন।</p>
+      </div>
+      <button type="button" class="ff-btn-gold ff-modal-btn" data-ff-modal-close>Got it</button>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var btn = document.getElementById("joinFullBtn");
+    var modal = document.getElementById("ffFullModal");
+    if (!btn || !modal) return;
+    function openModal() {
+      modal.hidden = false;
+      modal.classList.add("is-open");
+      document.body.classList.add("ff-modal-open");
+    }
+    function closeModal() {
+      modal.classList.remove("is-open");
+      document.body.classList.remove("ff-modal-open");
+      modal.hidden = true;
+    }
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      openModal();
+    });
+    modal.querySelectorAll("[data-ff-modal-close]").forEach(function (el) {
+      el.addEventListener("click", closeModal);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && modal.classList.contains("is-open")) closeModal();
+    });
+  })();
+  </script>
+  {% endif %}
+
+  <div id="ffRoomInfoModal" class="ff-modal" role="dialog" aria-modal="true" aria-labelledby="ffRoomInfoTitle" hidden>
+    <div class="ff-modal-backdrop" data-ff-room-close></div>
+    <div class="ff-modal-panel">
+      <div class="ff-modal-header">
+        <span class="ff-modal-icon" aria-hidden="true">🏆</span>
+        <h2 id="ffRoomInfoTitle" class="ff-modal-title">Room Info</h2>
+      </div>
+      <div class="ff-modal-body" id="ffRoomInfoBody">
+        <div id="ffRoomInfoOrderRef" style="display:none;padding:6px 0;margin-bottom:4px;text-align:center;font-size:0.82rem;font-weight:700;color:var(--ff-amber);border-bottom:1px solid rgba(251,191,36,0.12);">Order #<span id="ffRoomOrderId"></span></div>
+        <div id="ffRoomInfoAdminMsg" style="display:none;padding:4px 0 8px;text-align:center;font-size:0.75rem;color:var(--ff-teal);border-bottom:1px solid rgba(45,212,191,0.12);margin-bottom:8px;"></div>
+        <div id="ffRoomInfoLoading" style="text-align:center;padding:20px 0;">Loading...</div>
+        <div id="ffRoomInfoReady" style="display:none;">
+          <p style="margin:0 0 12px;"><strong>Slot #<span id="ffRoomSlot"></span></strong></p>
+          <div style="background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.2);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+            <p style="margin:0 0 6px;letter-spacing:0.04em;">
+              <span style="color:var(--ff-muted);font-size:0.72rem;text-transform:uppercase;">Room ID</span><br/>
+              <strong style="font-size:1.2rem;word-break:break-all;" id="ffRoomId"></strong>
+            </p>
+            <p style="margin:0;">
+              <span style="color:var(--ff-muted);font-size:0.72rem;text-transform:uppercase;">Password</span><br/>
+              <strong style="font-size:1.1rem;word-break:break-all;" id="ffRoomPass"></strong>
+            </p>
+          </div>
+          <a id="ffWhatsappLink" href="#" target="_blank" rel="noopener"
+             style="display:flex;align-items:center;gap:8px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);border-radius:8px;padding:10px 14px;text-decoration:none;color:var(--ff-text);margin-bottom:4px;">
+            <span style="font-size:1.2rem;">💬</span>
+            <span><strong>WhatsApp Group</strong><br/><span style="font-size:0.75rem;color:var(--ff-muted);">Join the tournament group</span></span>
+          </a>
+          <div id="ffRoomInfoExtra" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(45,212,191,0.04);border:1px solid rgba(45,212,191,0.12);border-radius:8px;font-size:0.75rem;color:var(--ff-muted);"></div>
+        </div>
+        <div id="ffRoomInfoJoin" style="display:none;">
+          <p><strong>আপনার কোনো সক্রিয় অর্ডার পাওয়া যায়নি।</strong></p>
+          <p>আগে টুর্নামেন্টে রেজিস্টার করুন এবং পেমেন্ট সম্পন্ন করুন।</p>
+        </div>
+        <div id="ffRoomInfoWait" style="display:none;">
+          <p><strong>আপনার পেমেন্ট অনুমোদনের অপেক্ষায় রয়েছে।</strong></p>
+          <p>অ্যাডমিন অ্যাপ্রুভ করার পর রুমের তথ্য দেখতে পাবেন।</p>
+          <a href="#" id="ffRoomInfoStatusLink" style="color:var(--ff-teal);text-decoration:underline;">স্ট্যাটাস পেজ দেখুন →</a>
+        </div>
+        <div id="ffRoomInfoNoRoom" style="display:none;">
+          <p><strong>আপনার স্লট কনফার্ম হয়েছে ✅</strong></p>
+          <p>রুম আইডি ও পাসওয়ার্ড দেয়া হবে নিচের সময়ে:</p>
+          <p id="ffRoomScheduleLabel" style="margin-top:8px;font-size:1rem;font-weight:bold;color:var(--ff-gold);"></p>
+          <div id="ffRoomInfoNoRoomExtra" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(45,212,191,0.04);border:1px solid rgba(45,212,191,0.12);border-radius:8px;font-size:0.75rem;color:var(--ff-muted);"></div>
+          <p style="margin-top:10px;font-size:0.72rem;color:var(--ff-muted);">আইডি: #<span id="ffRoomNoRoomOrderId"></span> | যেকোনো সময় স্ট্যাটাস দেখতে <a href="#" id="ffRoomNoRoomStatusLink" style="color:var(--ff-teal);">এই লিংক</a> সেভ করে রাখুন</p>
+        </div>
+        <div id="ffRoomInfoPay" style="display:none;">
+          <p><strong>আপনার পেমেন্ট এখনও সম্পন্ন হয়নি।</strong></p>
+          <p>পেমেন্ট সম্পন্ন করে আবার চেষ্টা করুন।</p>
+        </div>
+      </div>
+      <button type="button" class="ff-btn-gold ff-modal-btn" data-ff-room-close>Close</button>
+    </div>
+  </div>
+
+  <div id="ffLobbyChangeModal" class="ff-modal" role="dialog" aria-modal="true" hidden>
+    <div class="ff-modal-backdrop" onclick="ffCloseChangeModal()"></div>
+    <div class="ff-modal-panel" style="max-width:400px;">
+      <div class="ff-modal-header">
+        <span class="ff-modal-icon" aria-hidden="true">🔄</span>
+        <h2 class="ff-modal-title">Player Change</h2>
+      </div>
+      <div class="ff-modal-body" id="ffLobbyChangeBody">
+        <div id="ffLobbyChangeLoading" style="text-align:center;padding:20px 0;">Loading...</div>
+        <div id="ffLobbyChangeReady" style="display:none;">
+          <p style="margin:0 0 12px;font-size:12px;color:var(--ff-muted);">কাকে বের করতে চান সেটি নির্বাচন করুন এবং নতুন নাম দিন</p>
+          <div id="ffLobbyChangePlayers" style="margin-bottom:12px;"></div>
+          <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:nowrap;">
+            <input id="ffLobbyChangeInput" type="text" placeholder="Name or UID" style="flex:1;min-width:0;padding:10px 12px;font-size:14px;border:1px solid var(--ff-teal);border-radius:8px;background:#1a1a2e;color:var(--ff-text);box-sizing:border-box;">
+            <button type="button" id="ffLobbyFetchBtn" style="flex-shrink:0;padding:10px 12px;font-size:11px;font-weight:700;border:none;border-radius:8px;background:var(--ff-teal);color:#0a0a1a;cursor:pointer;white-space:nowrap;display:none;">Fetch</button>
+          </div>
+          <input type="hidden" id="ffLobbyChangeResolved" value="">
+          <p id="ffLobbyChangeStatus" style="margin:0 0 10px;font-size:12px;color:var(--ff-teal);"></p>
+          <div style="display:flex;gap:8px;">
+            <button type="button" id="ffLobbyChangeSave" onclick="ffSaveLobbyChange()" style="flex:1;padding:10px;font-size:13px;font-weight:700;border:none;border-radius:24px;background:var(--ff-teal);color:#0a0a1a;cursor:pointer;">Save Change</button>
+            <button type="button" onclick="ffCloseChangeModal()" style="flex:1;padding:10px;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,0.15);border-radius:24px;background:transparent;color:var(--ff-text);cursor:pointer;">Cancel</button>
+          </div>
+        </div>
+        <div id="ffLobbyChangeNoOrder" style="display:none;">
+          <p><strong>আপনার কোনো অর্ডার নেই।</strong></p>
+          <p>প্রথমে টুর্নামেন্টে যোগ দিন।</p>
+        </div>
+        <div id="ffLobbyChangeWait" style="display:none;">
+          <p><strong>আপনার অর্ডর অনুমোদনের অপেক্ষায় রয়েছে।</strong></p>
+          <p>অ্যাডমিন অ্যাপ্রুভ করার পর প্লেয়ার পরিবর্তন করতে পারবেন।</p>
+        </div>
+      </div>
+      <button type="button" class="ff-btn-gold ff-modal-btn" onclick="ffCloseChangeModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Already Joined Modal -->
+  <div id="ffAlreadyJoinedModal" class="ff-modal" role="dialog" aria-modal="true" hidden>
+    <div class="ff-modal-backdrop" onclick="ffCloseJoinedModal()"></div>
+    <div class="ff-modal-panel">
+      <div class="ff-modal-header">
+        <span class="ff-modal-icon" aria-hidden="true">✅</span>
+        <h2 class="ff-modal-title">Already Registered</h2>
+      </div>
+      <div class="ff-modal-body">
+        <p><strong>আপনি ইতিমধ্যে এই টুর্নামেন্টে রেজিস্টার করেছেন।</strong></p>
+        <p id="ffJoinedStatusText">নতুন করে Join করার দরকার নেই — নিচের বাটন থেকে স্ট্যাটাস দেখুন।</p>
+      </div>
+      <div style="display:flex;gap:8px;padding:0 24px 20px;">
+        <a id="ffJoinedStatusLink" href="#" class="ff-btn-gold ff-modal-btn" style="flex:1;text-align:center;text-decoration:none;">See Status</a>
+        <button type="button" class="ff-btn-gold ff-modal-btn" onclick="ffCloseJoinedModal()" style="flex:1;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var roomBtn = document.getElementById("roomInfoBtn");
+    if (!roomBtn) return;
+    roomBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      var contact = "";
+      try { contact = (localStorage.getItem("ff_contact") || "").trim(); } catch (err) {}
+      if (contact) {
+        openRoomModal(contact);
+      } else {
+        openRoomModal("");
+      }
+    });
+
+    function getRoomModal() {
+      return document.getElementById("ffRoomInfoModal");
+    }
+
+    function openRoomModal(contact) {
+      var modal = getRoomModal();
+      if (!modal) return;
+      showRoomSection("loading");
+      modal.hidden = false;
+      modal.classList.add("is-open");
+      document.body.classList.add("ff-modal-open");
+      fetch("{{ url_for('api_my_room') }}?contact=" + encodeURIComponent(contact))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            var refEl = document.getElementById("ffRoomInfoOrderRef");
+            var oidEl = document.getElementById("ffRoomOrderId");
+            var adminMsg = document.getElementById("ffRoomInfoAdminMsg");
+            if (data.order_id) {
+              oidEl.textContent = data.order_id;
+              refEl.style.display = "";
+            } else {
+              refEl.style.display = "none";
+              adminMsg.style.display = "none";
+            }
+            if (data.ok) {
+              document.getElementById("ffRoomSlot").textContent = data.slot_number || "—";
+              document.getElementById("ffRoomId").textContent = data.room_id || "—";
+              document.getElementById("ffRoomPass").textContent = data.room_pass || "—";
+              var wa = document.getElementById("ffWhatsappLink");
+              if (data.whatsapp_link) {
+                wa.href = data.whatsapp_link;
+                wa.style.display = "flex";
+              } else {
+                wa.style.display = "none";
+              }
+              var extra = document.getElementById("ffRoomInfoExtra");
+              if (data.room_info) {
+                extra.textContent = data.room_info;
+                extra.style.display = "";
+              } else {
+                extra.style.display = "none";
+              }
+              showRoomSection("ready");
+              if (data.room_info) {
+                adminMsg.textContent = data.room_info;
+                adminMsg.style.display = "";
+              } else {
+                adminMsg.style.display = "none";
+              }
+            } else if (data.error === "no_order") {
+              adminMsg.style.display = "none";
+              showRoomSection("join");
+            } else if (data.error === "pending_payment") {
+              adminMsg.style.display = "none";
+              showRoomSection("pay");
+            } else if (data.error === "pending_approval") {
+              adminMsg.style.display = "none";
+              document.getElementById("ffRoomInfoStatusLink").href = "{{ url_for('home') }}";
+              showRoomSection("wait");
+            } else if (data.error === "no_room") {
+              var labelEl = document.getElementById("ffRoomScheduleLabel");
+              if (data.room_schedule_label) {
+                labelEl.textContent = data.room_schedule_label;
+                labelEl.style.display = "";
+              } else if (data.tournament_time) {
+                labelEl.textContent = data.tournament_time;
+                labelEl.style.display = "";
+              } else {
+                labelEl.style.display = "none";
+              }
+              document.getElementById("ffRoomNoRoomOrderId").textContent = data.order_id || "";
+              var extraNoRoom = document.getElementById("ffRoomInfoNoRoomExtra");
+              if (data.room_info) {
+                extraNoRoom.textContent = data.room_info;
+                extraNoRoom.style.display = "";
+              } else {
+                extraNoRoom.style.display = "none";
+              }
+              var noRoomLink = document.getElementById("ffRoomNoRoomStatusLink");
+              if (data.order_id && data.view_token) {
+                noRoomLink.href = "{{ url_for('join_status', order_id=0, t='') }}".replace("/0/", "/" + data.order_id + "/").replace("t=", "t=" + data.view_token);
+                noRoomLink.style.display = "";
+              } else {
+                noRoomLink.style.display = "none";
+              }
+              showRoomSection("noroom");
+              if (data.room_info) {
+                adminMsg.textContent = data.room_info;
+                adminMsg.style.display = "";
+              } else {
+                adminMsg.style.display = "none";
+              }
+            } else {
+              adminMsg.style.display = "none";
+              showRoomSection("join");
+            }
+        })
+        .catch(function () {
+          adminMsg.style.display = "none";
+          showRoomSection("join");
+        });
+    }
+
+    function showRoomSection(id) {
+      ["loading","ready","join","wait","noroom","pay"].forEach(function (s) {
+        var el = document.getElementById("ffRoomInfo" + s.charAt(0).toUpperCase() + s.slice(1));
+        if (el) el.style.display = (s === id) ? "block" : "none";
+      });
+    }
+
+    function closeRoomModal() {
+      var modal = getRoomModal();
+      if (!modal) return;
+      modal.classList.remove("is-open");
+      document.body.classList.remove("ff-modal-open");
+      modal.hidden = true;
+    }
+
+    var modal = getRoomModal();
+    if (modal) {
+      modal.querySelectorAll("[data-ff-room-close]").forEach(function (el) {
+        el.addEventListener("click", closeRoomModal);
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && modal.classList.contains("is-open")) closeRoomModal();
+      });
+    }
+  })();
+  </script>
+
+  <script>
+  (function () {
+    var joinBtn = document.getElementById("joinBtn");
+    var joinFullBtn = document.getElementById("joinFullBtn");
+    var btn = joinBtn || joinFullBtn;
+    if (!btn) return;
+    var contact = "";
+    try { contact = (localStorage.getItem("ff_contact") || "").trim(); } catch (e) {}
+    if (!contact) return;
+    btn.addEventListener("click", function (e) {
+      if (btn.getAttribute("data-change-mode") === "1") return;
+      e.preventDefault();
+      fetch("{{ url_for('api_check_joined') }}?contact=" + encodeURIComponent(contact))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.joined) {
+            document.getElementById("ffJoinedStatusLink").href = data.status_url;
+            document.getElementById("ffJoinedStatusText").textContent =
+              data.status === "approved"
+                ? "আপনার রেজিস্ট্রেশন অনুমোদিত হয়েছে। নিচের বাটন থেকে স্ট্যাটাস দেখুন।"
+                : "আপনার রেজিস্ট্রেশন অ্যাডমিন অনুমোদনের অপেক্ষায় রয়েছে। নিচের বাটন থেকে স্ট্যাটাস দেখুন।";
+            var modal = document.getElementById("ffAlreadyJoinedModal");
+            modal.hidden = false;
+            modal.classList.add("is-open");
+            document.body.classList.add("ff-modal-open");
+          } else {
+            window.location.href = btn.getAttribute("href") || "{{ url_for('join', token=tournament.join_token) }}";
+          }
+        })
+        .catch(function () {
+          window.location.href = btn.getAttribute("href") || "{{ url_for('join', token=tournament.join_token) }}";
+        });
+    });
+    window.ffCloseJoinedModal = function () {
+      var modal = document.getElementById("ffAlreadyJoinedModal");
+      if (!modal) return;
+      modal.classList.remove("is-open");
+      document.body.classList.remove("ff-modal-open");
+      modal.hidden = true;
+    };
+  })();
+  </script>
+
+  <script>
+  (function () {
+    var joinBtn = document.getElementById("joinBtn");
+    var contact = "";
+    try { contact = (localStorage.getItem("ff_contact") || "").trim(); } catch (e) {}
+    var _orderId = null;
+    var _viewToken = null;
+    var _changesLeft = 0;
+    var _fetching = false;
+    window.ffCloseChangeModal = function () {
+      var modal = document.getElementById("ffLobbyChangeModal");
+      if (!modal) return;
+      modal.classList.remove("is-open");
+      document.body.classList.remove("ff-modal-open");
+      modal.hidden = true;
+    };
+    window.openLobbyChangeModal = function () {
+      var modal = document.getElementById("ffLobbyChangeModal");
+      if (!modal) return;
+      ffShowChangeSection("loading");
+      modal.hidden = false;
+      modal.classList.add("is-open");
+      document.body.classList.add("ff-modal-open");
+      fetch("{{ url_for('api_my_order') }}?contact=" + encodeURIComponent(contact))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            _orderId = data.order_id;
+            _viewToken = data.view_token;
+            _changesLeft = data.player_changes_left;
+            document.getElementById("ffLobbyChangeStatus").textContent = _changesLeft + " change" + (_changesLeft > 1 ? "s" : "") + " left";
+            var html = "";
+            data.members.forEach(function (m) {
+              html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;background:rgba(45,212,191,0.04);border:1px solid rgba(45,212,191,0.12);border-radius:8px;cursor:pointer;">' +
+                '<input type="radio" name="lobby_change_pos" value="' + m.position + '"' + (m.position === 1 ? " checked" : "") + ' style="accent-color:var(--ff-teal);">' +
+                '<span style="font-size:13px;"><strong>Player ' + m.position + '</strong>: ' + m.display_name + '</span></label>';
+            });
+            document.getElementById("ffLobbyChangePlayers").innerHTML = html;
+            document.getElementById("ffLobbyChangeInput").value = "";
+            document.getElementById("ffLobbyChangeResolved").value = "";
+            toggleFetchBtn();
+            if (_changesLeft < 1) {
+              document.getElementById("ffLobbyChangeSave").disabled = true;
+              document.getElementById("ffLobbyChangeSave").style.opacity = "0.5";
+            } else {
+              document.getElementById("ffLobbyChangeSave").disabled = false;
+              document.getElementById("ffLobbyChangeSave").style.opacity = "";
+            }
+            ffShowChangeSection("ready");
+          } else if (data.error === "no_order") {
+            ffShowChangeSection("noorder");
+          } else {
+            ffShowChangeSection("wait");
+          }
+        })
+        .catch(function () {
+          ffShowChangeSection("wait");
+        });
+    };
+    // If user has an approved order, turn Join Tournament into Player Change
+    if (contact) {
+      (function () {
+        var fb = document.getElementById("joinFullBtn");
+        var targetBtn = joinBtn || fb;
+        if (!targetBtn) return;
+        fetch("{{ url_for('api_my_order') }}?contact=" + encodeURIComponent(contact))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && data.status === "approved") {
+              targetBtn.setAttribute("data-change-mode", "1");
+              targetBtn.textContent = "🔄 Player Change";
+              targetBtn.href = "#";
+              targetBtn.id = "ffLobbyChangeBtn";
+              targetBtn.style.textDecoration = "none";
+              targetBtn.onclick = function (e) { e.preventDefault(); openLobbyChangeModal(); };
+            }
+          })
+          .catch(function () {});
+      })();
+    }
+    function ffShowChangeSection(id) {
+      ["loading","ready","noorder","wait"].forEach(function (s) {
+        var el = document.getElementById("ffLobbyChange" + s.charAt(0).toUpperCase() + s.slice(1));
+        if (el) el.style.display = (s === id) ? "block" : "none";
+      });
+    }
+    function isUid(v) { return /^\d+$/.test(v) && v.length >= 6; }
+    function toggleFetchBtn() {
+      var inp = document.getElementById("ffLobbyChangeInput");
+      var btn = document.getElementById("ffLobbyFetchBtn");
+      if (!inp || !btn) return;
+      btn.style.display = isUid(inp.value.trim()) ? "" : "none";
+    }
+    document.getElementById("ffLobbyChangeInput").addEventListener("input", toggleFetchBtn);
+    document.getElementById("ffLobbyFetchBtn").addEventListener("click", function () {
+      var inp = document.getElementById("ffLobbyChangeInput");
+      var uid = inp.value.trim();
+      if (!isUid(uid)) { alert("Enter a valid UID (6+ digits)"); return; }
+      var btn = this;
+      _fetching = true;
+      btn.textContent = "Fetching...";
+      btn.disabled = true;
+      fetch("/api/lookup-uid?uid=" + encodeURIComponent(uid))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.name) {
+            inp.value = data.name;
+            document.getElementById("ffLobbyChangeResolved").value = uid;
+            btn.style.display = "none";
+          } else {
+            alert("UID not found — enter name manually");
+          }
+          _fetching = false;
+          btn.textContent = "Fetch";
+          btn.disabled = false;
+        })
+        .catch(function () {
+          alert("Fetch failed — enter name manually");
+          _fetching = false;
+          btn.textContent = "Fetch";
+          btn.disabled = false;
+        });
+    });
+    window.ffSaveLobbyChange = function () {
+      var posEl = document.querySelector('input[name="lobby_change_pos"]:checked');
+      if (!posEl) { alert("Select a player to replace"); return; }
+      var val = document.getElementById("ffLobbyChangeInput").value.trim();
+      if (!val) { alert("Enter a player name or UID"); return; }
+      var resolvedUid = document.getElementById("ffLobbyChangeResolved").value.trim();
+      var name = resolvedUid ? val : val;
+      var uid = resolvedUid;
+      var btn = document.getElementById("ffLobbyChangeSave");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+      var fd = new FormData();
+      fd.append("position", posEl.value);
+      fd.append("display_name", name);
+      fd.append("uid", uid);
+      fetch("/order/" + _orderId + "/change-player/" + _viewToken, { method: "POST", body: fd })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            document.getElementById("ffLobbyChangeInput").value = "";
+            document.getElementById("ffLobbyChangeResolved").value = "";
+            _changesLeft = data.changes_left;
+            document.getElementById("ffLobbyChangeStatus").textContent = _changesLeft + " change" + (_changesLeft > 1 ? "s" : "") + " left";
+            if (_changesLeft < 1) {
+              btn.disabled = true;
+              btn.style.opacity = "0.5";
+            }
+            btn.textContent = "Saved!";
+            setTimeout(function () { btn.textContent = "Save Change"; btn.disabled = false; btn.style.opacity = ""; ffCloseChangeModal(); }, 800);
+          } else {
+            alert(data.error || "Failed to save");
+            btn.disabled = false;
+            btn.textContent = "Save Change";
+          }
+        })
+        .catch(function () {
+          alert("Network error");
+          btn.disabled = false;
+          btn.textContent = "Save Change";
+        });
+    };
+  })();
+  </script>
+</body>
+</html>
