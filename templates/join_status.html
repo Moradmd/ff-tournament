@@ -77,6 +77,12 @@
     {% if tournament.tournament_time %}
     <p class="ff-approved-hint ff-bn-only" style="margin-top:2px;">⏱ {{ tournament.tournament_time }}</p>
     {% endif %}
+    {% if auto_redirect %}
+    <div id="ffCountdown" style="margin:12px 0 16px;padding:12px;background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.2);border-radius:10px;text-align:center;">
+      <p class="ff-bn-only" style="margin:0 0 4px;font-size:14px;font-weight:700;color:var(--ff-teal);">🎉 অভিনন্দন! স্লট পেয়েছেন!</p>
+      <p class="ff-bn-only" style="margin:0;font-size:13px;color:var(--ff-muted);">Lobby তে যাচ্ছি <span id="ffTimerSec">3</span> সেকেন্ড...</p>
+    </div>
+    {% endif %}
     <p class="ff-approved-hint ff-bn-only">গেমে <strong>শুধু স্লট #{{ order.slot_number }}</strong> এ থাকবেন — অন্য স্লটে গেলে বের করা হবে।</p>
 
     {% include '_my_slot_panel.html' %}
@@ -206,6 +212,20 @@
         {% endif %}
       } catch (e) {}
     })();
+    {% if auto_redirect and order.status == 'approved' %}
+    (function () {
+      var sec = 3;
+      var el = document.getElementById('ffTimerSec');
+      var iv = setInterval(function () {
+        sec -= 1;
+        if (el) el.textContent = sec;
+        if (sec <= 0) {
+          clearInterval(iv);
+          window.location.href = "{{ url_for('home') }}";
+        }
+      }, 1000);
+    })();
+    {% endif %}
   </script>
 
   <script>

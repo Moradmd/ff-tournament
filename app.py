@@ -586,7 +586,7 @@ def _complete_gateway_order(order_id, trx_id, payment_method, gateway_tran_id=No
         order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
         if not order:
             return None, "Order not found"
-        if order["status"] == "pending_approval":
+        if order["status"] in ("pending_approval", "approved"):
             return order_id, None
         if order["status"] != "pending_payment":
             return None, "Order already processed"
@@ -687,7 +687,7 @@ def rupantor_success():
         )
         tok = conn.execute("SELECT view_token FROM orders WHERE id = ?", (order_id,)).fetchone()
         t = tok["view_token"] if tok else ""
-    return redirect(url_for("join_status", order_id=order_id, t=t))
+    return redirect(url_for("join_status", order_id=order_id, t=t, auto=1))
 
 
 @app.route("/payment/rupantor/cancel")
@@ -892,6 +892,7 @@ def join_status(order_id):
                 "uid": m["uid"],
             }
 
+    auto_redirect = request.args.get("auto", type=int) == 1
     return render_template(
         "join_status.html",
         order=order,
@@ -903,6 +904,7 @@ def join_status(order_id):
         whatsapp_group_link=_get_whatsapp_link(tournament),
         view_token=view_token,
         room_schedule_label=_room_schedule_label(tournament),
+        auto_redirect=auto_redirect,
     )
 
 
