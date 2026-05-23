@@ -534,8 +534,8 @@ def join_submit():
             client_host = request.host.split(":")[0] if request.host else "127.0.0.1"
             slug = payment_gateway.provider_slug()
             if slug == "rupantorpay":
-                success_url = external_url("rupantor_success")
-                cancel_url = external_url("rupantor_cancel")
+                success_url = external_url("rupantor_success", order_id=order_id)
+                cancel_url = external_url("rupantor_cancel", order_id=order_id)
                 webhook_url = external_url("rupantor_webhook")
                 fail_url = cancel_url
             elif slug == "bkash":
@@ -659,9 +659,18 @@ def rupantor_success():
         return _join_redirect("Payment failed")
     if not transaction_id:
         return _join_redirect("Transaction ID নেই")
-    order_id, err = _finalize_rupantor(transaction_id)
-    if err or not order_id:
-        return _join_redirect(err or "Payment verify হয়নি")
+    # order_id directly from URL (passed in success_url), fallback to verify API metadata
+    order_id = request.args.get("order_id", type=int)
+    if not order_id:
+        _o, err = _finalize_rupantor(transaction_id)
+        if err or not _o:
+            return _join_redirect(err or "Payment verify হয়নি")
+        order_id = _o
+    else:
+        # Verify + complete
+        _, err = _finalize_rupantor(transaction_id)
+        if err:
+            return _join_redirect(err)
     with get_db() as conn:
         conn.execute(
             "UPDATE orders SET gateway_tran_id = ? WHERE id = ?",
@@ -679,14 +688,19 @@ def rupantor_cancel():
         or request.args.get("transaction_id")
         or ""
     ).strip()
-    meta_order = None
-    if transaction_id:
-        vr = rupantorpay.verify_payment(transaction_id)
-        if vr.get("ok"):
-            meta_order = vr.get("order_id")
-    if meta_order:
+    order_id = request.args.get("order_id", type=int)
+    if not order_id:
+        meta_order = None
+        if transaction_id:
+            vr = rupantorpay.verify_payment(transaction_id)
+            if vr.get("ok"):
+                meta_order = vr.get("order_id")
+        if meta_order:
+            with get_db() as conn:
+                fail_pending_payment(conn, meta_order)
+    else:
         with get_db() as conn:
-            fail_pending_payment(conn, meta_order)
+            fail_pending_payment(conn, order_id)
     return _join_redirect("Payment cancelled")
 
 
