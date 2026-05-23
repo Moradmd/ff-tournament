@@ -97,6 +97,7 @@
     window.FF_UID_MAX = {{ uid_max }};
     window.FF_SERVER = "{{ ff_server }}";
     window.GATEWAY_ENABLED = {{ 'true' if gateway_enabled else 'false' }};
+    window.TEST_MODE = {{ 'true' if test_mode else 'false' }};
   </script>
   <script src="{{ url_for('static', filename='join.js') }}"></script>
 </body>

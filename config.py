@@ -78,6 +78,9 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "")
 # Gateway payment success hole auto approve (manual trx ID e admin approve thakbe)
 AUTO_APPROVE_GATEWAY = os.getenv("AUTO_APPROVE_GATEWAY", "0") == "1"
 
+# Test mode — simulate payment without real gateway
+TEST_MODE = os.getenv("TEST_MODE", "0") == "1"
+
 # RupantorPay — https://rupantorpay.com/user/dashboard → Brands → API key
 RUPANTORPAY_API_KEY = os.getenv("RUPANTORPAY_API_KEY", "")
 RUPANTORPAY_CLIENT = os.getenv("RUPANTORPAY_CLIENT", "")  # domain/host for X-CLIENT header

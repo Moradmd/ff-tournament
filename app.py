@@ -19,6 +19,7 @@ from config import (
     PORT,
     PUBLIC_BASE_URL,
     SECRET_KEY,
+    TEST_MODE,
     WHATSAPP_GROUP_LINK,
 )
 from database import (
@@ -370,6 +371,7 @@ def join(token=None):
         gateway_enabled=payment_gateway.is_enabled(),
         gateway_name=payment_gateway.provider_name(),
         auto_approve_gateway=AUTO_APPROVE_GATEWAY,
+        test_mode=TEST_MODE,
         uid_min=FF_UID_MIN_LEN,
         uid_max=FF_UID_MAX_LEN,
         ff_server=FF_SERVER,
@@ -575,6 +577,7 @@ def join_submit():
                 "ok": True,
                 "order_id": order_id,
                 "redirect": session["gateway_url"],
+                "simulate_url": url_for("simulate_payment", order_id=order_id) if TEST_MODE else None,
             })
 
     # Fallback (should not happen): all successful flows return earlier.
@@ -727,6 +730,23 @@ def rupantor_webhook():
             (transaction_id, order_id),
         )
     return "OK", 200
+
+
+@app.route("/api/simulate-payment/<int:order_id>", methods=["POST"])
+def simulate_payment(order_id):
+    """Test mode — simulate gateway callback without real payment."""
+    if not TEST_MODE:
+        return jsonify({"ok": False, "error": "Test mode not enabled"}), 403
+    order_id2, err = _complete_gateway_order(order_id, "SIMULATED", "bkash")
+    if err or not order_id2:
+        return jsonify({"ok": False, "error": err or "Failed"}), 400
+    with get_db() as conn:
+        tok = conn.execute("SELECT view_token FROM orders WHERE id = ?", (order_id,)).fetchone()
+        t = tok["view_token"] if tok else ""
+    return jsonify({
+        "ok": True,
+        "redirect": url_for("join_status", order_id=order_id, t=t),
+    })
 
 
 def _join_redirect(pay_error=None):
