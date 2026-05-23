@@ -63,17 +63,10 @@
             <span>Online ({{ gateway_name }})</span>
           </label>
           {% endif %}
-          {% if enable_manual_payment %}
-          <label class="ff-pay-type">
-            <input type="radio" name="pay_type" value="manual" {% if not gateway_enabled %}checked{% endif %} />
-            <span>Manual (bKash / Nagad)</span>
-          </label>
-          {% endif %}
         </div>
 
         <p class="ff-highlight-bn">
           <strong>গুরুত্বপূর্ণ:</strong> নিচের নম্বর/গেটওয়ে ছাড়া অন্য কোথাও টাকা পাঠাবেন না।
-          Trx ID ভুল দিলে অর্ডার বাতিল হতে পারে।
         </p>
 
         {% if gateway_enabled %}
@@ -81,34 +74,11 @@
             <div class="ff-gateway-pic ff-gateway-pic--selected">
               <img src="{{ url_for('static', filename='rupantorpay.jpg') }}" alt="Gateway" />
             </div>
-            <p class="ff-sub" style="margin-top:8px;">After successful online payment your status page updates automatically.</p>
+            <p class="ff-sub" style="margin-top:8px;">পেমেন্ট সফল হলে নিজে থেকেই অর্ডার অ্যাপ্রুভ হয়ে যাবে।</p>
           </div>
         {% endif %}
 
-        {% if enable_manual_payment %}
-          <div id="manualPay" class="ff-pay-panel hidden">
-            <p class="ff-sub">Send money then enter Trx ID — admin will verify.</p>
-            <div class="ff-card ff-card-inline ff-manual-card">
-              <div class="ff-field">
-                <label>Method *</label>
-                <select name="manual_method">
-                  <option value="bkash">bKash ({{ bkash }})</option>
-                  <option value="nagad">Nagad ({{ nagad }})</option>
-                </select>
-              </div>
-              <div class="ff-field">
-                <label>Trx ID *</label>
-                <input name="manual_trx" placeholder="e.g. 9AB12CD34" />
-              </div>
-            </div>
-            <div class="ff-copy-row">
-              <button type="button" class="ff-btn-sky ff-copy-btn" data-copy="{{ bkash }}">Copy bKash</button>
-              <button type="button" class="ff-btn-sky ff-copy-btn" data-copy="{{ nagad }}">Copy Nagad</button>
-            </div>
-          </div>
-        {% endif %}
-
-        {% if (not gateway_enabled) and (not enable_manual_payment) %}
+        {% if not gateway_enabled %}
           <p class="ff-err">Payment not configured — contact admin.</p>
         {% endif %}
       </div>
@@ -127,7 +97,6 @@
     window.FF_UID_MAX = {{ uid_max }};
     window.FF_SERVER = "{{ ff_server }}";
     window.GATEWAY_ENABLED = {{ 'true' if gateway_enabled else 'false' }};
-    window.MANUAL_ENABLED = {{ 'true' if enable_manual_payment else 'false' }};
   </script>
   <script src="{{ url_for('static', filename='join.js') }}"></script>
 </body>

@@ -147,29 +147,16 @@
   if (!form) return;
 
   const gatewayPay = document.getElementById("gatewayPay");
-  const manualPay = document.getElementById("manualPay");
   const payPageError = document.getElementById("payPageError");
   const submitBtn = document.getElementById("submitBtn");
   const gatewayEnabled = !!window.GATEWAY_ENABLED;
 
-  function selectedPayType() {
-    const el = document.querySelector('input[name="pay_type"]:checked');
-    return (el ? el.value : "gateway").trim();
-  }
-
   function syncPayUI() {
-    const t = selectedPayType();
-    if (gatewayPay) gatewayPay.classList.toggle("hidden", t !== "gateway");
-    if (manualPay) manualPay.classList.toggle("hidden", t !== "manual");
     if (submitBtn) {
-      submitBtn.textContent =
-        t === "manual" ? "Submit (Manual Trx)" : gatewayEnabled ? "Pay ৳ Online" : "Submit Order";
+      submitBtn.textContent = gatewayEnabled ? "Pay ৳ Online" : "Submit Order";
     }
   }
 
-  document.querySelectorAll('input[name="pay_type"]').forEach((r) => {
-    r.addEventListener("change", syncPayUI);
-  });
   syncPayUI();
 
   async function copyText(txt) {
@@ -219,28 +206,7 @@
     btn.disabled = true;
 
     const fd = new FormData(form);
-    // Payment mode: gateway/manual
-    const t = selectedPayType();
-    fd.set("payment_mode", t === "manual" ? "manual" : "gateway");
-
-    if (t === "manual") {
-      const method = String(fd.get("manual_method") || "").trim();
-      const trx = String(fd.get("manual_trx") || "").trim();
-      if (!method) {
-        err.textContent = "Select payment method (bKash/Nagad)";
-        err.classList.remove("hidden");
-        btn.disabled = false;
-        return;
-      }
-      if (!trx) {
-        err.textContent = "Enter Trx ID";
-        err.classList.remove("hidden");
-        btn.disabled = false;
-        return;
-      }
-      fd.set("manual_method", method);
-      fd.set("manual_trx", trx);
-    }
+    fd.set("payment_mode", "gateway");
 
     for (let i = 1; i <= SQUAD_SIZE; i++) {
       const raw = (fd.get(`player_${i}`) || "").trim();

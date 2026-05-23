@@ -12,7 +12,6 @@ from config import (
     ADMIN_PIN,
     AUTO_APPROVE_GATEWAY,
     BKASH_NUMBER,
-    ENABLE_MANUAL_PAYMENT,
     ENTRY_FEE,
     FF_SERVER,
     HOST,
@@ -371,7 +370,6 @@ def join(token=None):
         gateway_enabled=payment_gateway.is_enabled(),
         gateway_name=payment_gateway.provider_name(),
         auto_approve_gateway=AUTO_APPROVE_GATEWAY,
-        enable_manual_payment=ENABLE_MANUAL_PAYMENT,
         uid_min=FF_UID_MIN_LEN,
         uid_max=FF_UID_MAX_LEN,
         ff_server=FF_SERVER,
@@ -451,7 +449,6 @@ def _insert_order(
 def join_submit():
     leader_contact = (request.form.get("leader_contact") or "").strip()
     squad_name = (request.form.get("squad_name") or "").strip() or None
-    payment_mode = (request.form.get("payment_mode") or "gateway").strip().lower()
 
     if not leader_contact:
         return jsonify({"ok": False, "error": "হোয়াটসঅ্যাপ / যোগাযোগ নম্বর দিন"}), 400
@@ -460,40 +457,13 @@ def join_submit():
     if err:
         return jsonify({"ok": False, "error": err}), 400
 
-    # Payment modes:
-    # - gateway: online payment (pending_payment -> pending_approval)
-    # - manual: admin will verify trx (direct pending_approval)
-    if payment_mode == "manual":
-        if not ENABLE_MANUAL_PAYMENT:
-            return jsonify({"ok": False, "error": "ম্যানুয়াল পেমেন্ট বন্ধ। অ্যাডমিন চালু করবেন।"}), 400
-        raw_method = (request.form.get("manual_method") or "").strip().lower()
-        manual_method = (
-            "bkash" if raw_method in ("bkash", "b-kash", "b_kash") else
-            "nagad" if raw_method in ("nagad",) else
-            ""
-        )
-        manual_trx = (request.form.get("manual_trx") or "").strip().replace(" ", "")
-
-        if manual_method not in ("bkash", "nagad"):
-            return jsonify({"ok": False, "error": "পেমেন্ট পদ্ধতি বেছে নিন (bKash/Nagad)"}), 400
-        if not manual_trx:
-            return jsonify({"ok": False, "error": "ট্রানজেকশন আইডি দিন"}), 400
-        # Simple sanity: trx id mostly alphanumeric
-        if len(manual_trx) < 5 or len(manual_trx) > 64 or not manual_trx.replace("-", "").isalnum():
-            return jsonify({"ok": False, "error": "সঠিক ট্রানজেকশন আইডি দিন"}), 400
-
-        payment_method = f"manual_{manual_method}"
-        payment_trx = manual_trx
-        order_status = "pending_approval"
-        use_gateway = False
-    else:
-        # default: gateway
-        if not payment_gateway.is_enabled():
-            return jsonify({"ok": False, "error": "অনলাইন পেমেন্ট এখন চালু নেই"}), 400
-        payment_method = payment_gateway.provider_slug()
-        payment_trx = "PENDING"
-        order_status = "pending_payment"
-        use_gateway = True
+    # Payment — only online gateway
+    if not payment_gateway.is_enabled():
+        return jsonify({"ok": False, "error": "অনলাইন পেমেন্ট এখন চালু নেই"}), 400
+    payment_method = payment_gateway.provider_slug()
+    payment_trx = "PENDING"
+    order_status = "pending_payment"
+    use_gateway = True
 
     with get_db() as conn:
         tournament = get_tournament(conn)
