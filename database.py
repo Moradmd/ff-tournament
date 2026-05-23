@@ -319,7 +319,10 @@ def init_db():
         if not USING_PG:
             conn.execute("PRAGMA journal_mode=WAL")
         if USING_PG:
-            conn.execute(_pg_ddl())
+            for stmt in _pg_ddl().split(";"):
+                s = stmt.strip()
+                if s:
+                    conn.execute(s)
         else:
             conn.execute(_sqlite_ddl())
         _migrate(conn)
@@ -371,7 +374,10 @@ def _migrate(conn):
 
     # Re-run CREATE TABLE IF NOT EXISTS for safety
     if USING_PG:
-        conn.execute(_pg_ddl())
+        for stmt in _pg_ddl().split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(s)
     else:
         conn.execute(_sqlite_ddl())
 
