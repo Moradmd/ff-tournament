@@ -414,8 +414,9 @@
   <script>
   (function () {
     var listEl = document.getElementById("ffRecentList");
-    if (!listEl) return;
+    var slotBlocks = document.querySelectorAll(".ff-slot-block");
     var seenIds = {};
+    var slotStates = [];
     function makeItem(o) {
       var label = o.status === "approved" ? "✅" : "⏳";
       var cls = o.status === "approved" ? "" : " is-pending";
@@ -428,30 +429,78 @@
       return div;
     }
     function loadRecent() {
-      fetch("{{ url_for('api_recent_orders') }}?limit=10")
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (!data || !data.length) {
+      if (listEl) {
+        fetch("{{ url_for('api_recent_orders') }}?limit=10")
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.length) {
+              if (!Object.keys(seenIds).length) {
+                listEl.innerHTML = '<div class="ff-recent-placeholder">কেউ জয়েন করেনি এখনো</div>';
+              }
+              return;
+            }
+            var anyNew = false;
+            data.forEach(function (o) {
+              if (!seenIds[o.order_id]) {
+                seenIds[o.order_id] = true;
+                var item = makeItem(o);
+                if (listEl.firstChild && listEl.firstChild.className === "ff-recent-placeholder") {
+                  listEl.innerHTML = "";
+                }
+                listEl.insertBefore(item, listEl.firstChild);
+                anyNew = true;
+              }
+            });
             if (!Object.keys(seenIds).length) {
               listEl.innerHTML = '<div class="ff-recent-placeholder">কেউ জয়েন করেনি এখনো</div>';
             }
-            return;
-          }
-          var anyNew = false;
-          data.forEach(function (o) {
-            if (!seenIds[o.order_id]) {
-              seenIds[o.order_id] = true;
-              var item = makeItem(o);
-              if (listEl.firstChild && listEl.firstChild.className === "ff-recent-placeholder") {
-                listEl.innerHTML = "";
+          })
+          .catch(function () {});
+      }
+    }
+    function loadSlots() {
+      if (!slotBlocks.length) return;
+      fetch("{{ url_for('api_lobby') }}")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.slots) return;
+          data.slots.forEach(function (s, idx) {
+            var block = slotBlocks[idx];
+            if (!block) return;
+            var prev = slotStates[idx];
+            if (prev === s.squad_name) return; // skip if same
+            slotStates[idx] = s.squad_name;
+            // Update squad label
+            var labelEl = block.querySelector(".ff-squad-label");
+            if (labelEl) labelEl.textContent = s.squad_name || "—";
+            // Update player rows
+            var rows = block.querySelectorAll(".ff-player-row");
+            s.players.forEach(function (p, pi) {
+              var row = rows[pi];
+              if (!row) return;
+              var wasFilled = row.classList.contains("is-filled");
+              var isFilled = !!p;
+              if (isFilled) {
+                row.classList.add("is-filled");
+                row.classList.remove("is-empty");
+                row.removeAttribute("aria-hidden");
+                var nameEl = row.querySelector(".ff-player-name");
+                if (!nameEl) {
+                  nameEl = document.createElement("span");
+                  nameEl.className = "ff-player-name";
+                  row.appendChild(nameEl);
+                }
+                nameEl.textContent = p.name;
+                nameEl.title = p.uid ? "UID: " + p.uid : "";
+              } else {
+                row.classList.remove("is-filled");
+                row.classList.add("is-empty");
+                row.setAttribute("aria-hidden", "true");
+                var nameEl = row.querySelector(".ff-player-name");
+                if (nameEl) nameEl.textContent = "";
               }
-              listEl.insertBefore(item, listEl.firstChild);
-              anyNew = true;
-            }
+            });
           });
-          if (!Object.keys(seenIds).length) {
-            listEl.innerHTML = '<div class="ff-recent-placeholder">কেউ জয়েন করেনি এখনো</div>';
-          }
         })
         .catch(function () {});
     }
@@ -470,7 +519,8 @@
       } catch(e) { return ""; }
     }
     loadRecent();
-    setInterval(loadRecent, 10000);
+    loadSlots();
+    setInterval(function () { loadRecent(); loadSlots(); }, 10000);
   })();
   </script>
   <script>

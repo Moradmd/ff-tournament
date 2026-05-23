@@ -387,6 +387,31 @@ def api_recent_orders():
     return jsonify(result)
 
 
+@app.route("/api/lobby")
+def api_lobby():
+    with get_db() as conn:
+        t = get_tournament(conn)
+        slots, filled = lobby_data(conn, t)
+        slots_full = all(s.get("status") == "registered" for s in slots)
+        return jsonify({
+            "filled": filled,
+            "max_players": SLOT_COUNT * SQUAD_SIZE,
+            "slots_full": slots_full,
+            "slots": [
+                {
+                    "slot_number": s["slot_number"],
+                    "squad_name": s["squad_name"],
+                    "status": s["status"],
+                    "players": [
+                        {"name": p["name"], "uid": p["uid"]} if p else None
+                        for p in s["players"]
+                    ],
+                }
+                for s in slots
+            ],
+        })
+
+
 @app.route("/join")
 @app.route("/join/<token>")
 def join(token=None):
