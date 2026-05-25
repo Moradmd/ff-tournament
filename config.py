@@ -34,7 +34,7 @@ _load_dotenv()
 # No hardcoded default here—so it won't be exposed in public repos or UI.
 ADMIN_PIN = os.getenv("ADMIN_PIN", "").strip()
 BKASH_NUMBER = os.getenv("BKASH_NUMBER", "01XXXXXXXXX")
-NAGAD_NUMBER = os.getenv("NAGAD_NUMBER", "01XXXXXXXXX")
+NAGAD_NUMBER = os.getenv("NAGAD_NUMBER", "01822777137")
 ENTRY_FEE = os.getenv("ENTRY_FEE", "50")
 
 # Payment provider selection:

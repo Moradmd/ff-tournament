@@ -1728,6 +1728,103 @@ def release_slot(slot_id):
     return redirect(url_for("admin_dashboard"))
 
 
+@app.route("/admin/register-team", methods=["POST"])
+def admin_register_team():
+    if not require_admin():
+        return redirect(url_for("admin_login"))
+
+    squad_name = (request.form.get("squad_name") or "").strip()
+    leader_contact = (request.form.get("leader_contact") or "").strip()
+    if not squad_name or not leader_contact:
+        return redirect(url_for("admin_dashboard") + "?error=missing_fields")
+
+    with get_db() as conn:
+        tournament = get_tournament(conn)
+        slot = next_empty_slot(conn, tournament["id"])
+        if not slot:
+            return redirect(url_for("admin_dashboard") + "?error=all_full")
+
+        now = datetime.utcnow().isoformat()
+        view_token = secrets.token_urlsafe(16)
+        conn.execute(
+            """
+            INSERT INTO orders (tournament_id, squad_name, leader_contact, status,
+                payment_method, payment_trx, auto_approved, created_at, reviewed_at, view_token)
+            VALUES (?, ?, ?, 'approved', 'manual', 'ADMIN', 1, ?, ?, ?)
+            """,
+            (tournament["id"], squad_name, leader_contact, now, now, view_token),
+        )
+        order_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        for pos in range(1, 5):
+            name = (request.form.get(f"player_{pos}") or "").strip()
+            uid = (request.form.get(f"uid_{pos}") or "").strip()
+            if name:
+                conn.execute(
+                    "INSERT INTO order_members (order_id, position, display_name, uid) VALUES (?, ?, ?, ?)",
+                    (order_id, pos, name, uid),
+                )
+
+        conn.execute("DELETE FROM members WHERE slot_id = ?", (slot["id"],))
+        for pos in range(1, 5):
+            name = (request.form.get(f"player_{pos}") or "").strip()
+            uid = (request.form.get(f"uid_{pos}") or "").strip()
+            if name:
+                conn.execute(
+                    "INSERT INTO members (slot_id, position, display_name, uid) VALUES (?, ?, ?, ?)",
+                    (slot["id"], pos, name, uid),
+                )
+
+        conn.execute(
+            """
+            UPDATE slots SET status = 'registered', squad_name = ?, leader_contact = ?,
+                order_id = ?, registered_at = ?
+            WHERE id = ?
+            """,
+            (squad_name, leader_contact, order_id, now, slot["id"]),
+        )
+        conn.execute(
+            "UPDATE orders SET assigned_slot_id = ? WHERE id = ?",
+            (slot["id"], order_id),
+        )
+
+    return redirect(url_for("admin_dashboard") + "?registered=1")
+
+
+@app.route("/admin/slot/<int:slot_id>/edit-squad", methods=["POST"])
+def admin_edit_slot_squad(slot_id):
+    if not require_admin():
+        return redirect(url_for("admin_login"))
+
+    new_name = (request.form.get("squad_name") or "").strip()
+    new_contact = (request.form.get("leader_contact") or "").strip()
+    if not new_name:
+        return redirect(url_for("admin_dashboard") + "?error=missing_name")
+
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE slots SET squad_name = ?, leader_contact = ? WHERE id = ?",
+            (new_name, new_contact, slot_id),
+        )
+    return redirect(url_for("admin_dashboard") + "?updated=1")
+
+
+@app.route("/admin/clear-history", methods=["POST"])
+def admin_clear_history():
+    if not require_admin():
+        return redirect(url_for("admin_login"))
+
+    confirm = (request.form.get("confirm") or "").strip().upper()
+    if confirm != "CLEAR":
+        return redirect(url_for("admin_history") + "?error=confirm")
+
+    with get_db() as conn:
+        tournament = get_tournament(conn)
+        conn.execute("DELETE FROM order_members WHERE order_id IN (SELECT id FROM orders WHERE tournament_id = ?)", (tournament["id"],))
+        conn.execute("DELETE FROM orders WHERE tournament_id = ?", (tournament["id"],))
+    return redirect(url_for("admin_history") + "?cleared=1")
+
+
 @app.route("/admin/api/restore", methods=["POST"])
 def admin_restore():
     if not require_admin():
