@@ -48,7 +48,7 @@ ENABLE_MANUAL_PAYMENT = True
 # WhatsApp group (approved players only)
 WHATSAPP_GROUP_LINK = os.getenv(
     "WHATSAPP_GROUP_LINK",
-    "https://chat.whatsapp.com/IzvsrACcYWxBDZBfouTVEq",
+    "https://chat.whatsapp.com/EicHvLL5NHV056crwFn3eq",
 ).strip()
 
 # UID API — ffuidchack (default) · apiinfo-flame fallback
