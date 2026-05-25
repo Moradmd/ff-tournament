@@ -266,7 +266,7 @@ def api_my_room():
         t = get_tournament(conn)
         order = _find_order_by_contact(conn, t["id"], contact, norm)
         if not order:
-            return jsonify({"ok": False, "error": "no_order"})
+            return jsonify({"ok": False, "error": "no_order", "whatsapp_link": _get_whatsapp_link(t)})
         has_room = bool((t["room_id"] or "").strip())
         st = order["status"] or ""
         common = {
@@ -274,6 +274,7 @@ def api_my_room():
             "view_token": order["view_token"] if "view_token" in order.keys() else "",
             "slot_number": order["slot_number"],
             "status": st,
+            "whatsapp_link": _get_whatsapp_link(t),
         }
         if st == "approved" and has_room:
             return jsonify({
@@ -281,7 +282,6 @@ def api_my_room():
                 "ok": True,
                 "room_id": t["room_id"],
                 "room_pass": t["room_pass"],
-                "whatsapp_link": _get_whatsapp_link(t),
                 "room_info": t["room_info"] if "room_info" in t.keys() else None,
             })
         if st == "approved" and not has_room:
