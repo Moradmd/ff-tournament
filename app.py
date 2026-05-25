@@ -1422,12 +1422,13 @@ def admin_update_room():
     room_id = (request.form.get("room_id") or "").strip()
     room_pass = (request.form.get("room_pass") or "").strip()
     room_available_at = (request.form.get("room_available_at") or "").strip()
-    whatsapp_link = (request.form.get("whatsapp_group_link") or "").strip()
+    whatsapp_link_submitted = (request.form.get("whatsapp_group_link") or "").strip()
     tournament_time = (request.form.get("tournament_time") or "").strip()
     room_info = (request.form.get("room_info") or "").strip()
 
     with get_db() as conn:
         t = get_tournament(conn)
+        whatsapp_link = whatsapp_link_submitted or (t["whatsapp_group_link"] if "whatsapp_group_link" in t.keys() else None)
         conn.execute(
             """
             UPDATE tournaments
