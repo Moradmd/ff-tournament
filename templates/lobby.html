@@ -136,11 +136,6 @@
               <strong style="font-size:1.1rem;word-break:break-all;" id="ffRoomPass"></strong>
             </p>
           </div>
-          <a id="ffWhatsappLink" href="#" target="_blank" rel="noopener"
-             style="display:flex;align-items:center;gap:8px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);border-radius:8px;padding:10px 14px;text-decoration:none;color:var(--ff-text);margin-bottom:4px;">
-            <span style="font-size:1.2rem;">💬</span>
-            <span><strong>WhatsApp Group</strong><br/><span style="font-size:0.75rem;color:var(--ff-muted);">Join the tournament group</span></span>
-          </a>
           <div id="ffRoomInfoExtra" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(45,212,191,0.04);border:1px solid rgba(45,212,191,0.12);border-radius:8px;font-size:0.75rem;color:var(--ff-muted);"></div>
         </div>
         <div id="ffRoomInfoJoin" style="display:none;">
@@ -163,6 +158,12 @@
           <p><strong>আপনার পেমেন্ট এখনও সম্পন্ন হয়নি।</strong></p>
           <p>পেমেন্ট সম্পন্ন করে আবার চেষ্টা করুন।</p>
         </div>
+        <!-- WhatsApp link always visible -->
+        <a id="ffWhatsappLink" href="#" target="_blank" rel="noopener"
+           style="display:none;align-items:center;gap:8px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);border-radius:8px;padding:10px 14px;text-decoration:none;color:var(--ff-text);margin-top:8px;">
+          <span style="font-size:1.2rem;">💬</span>
+          <span><strong>WhatsApp Group</strong><br/><span style="font-size:0.75rem;color:var(--ff-muted);">Join the tournament group</span></span>
+        </a>
       </div>
       <button type="button" class="ff-btn-gold ff-modal-btn" data-ff-room-close>Close</button>
     </div>
@@ -266,13 +267,79 @@
               document.getElementById("ffRoomSlot").textContent = data.slot_number || "—";
               document.getElementById("ffRoomId").textContent = data.room_id || "—";
               document.getElementById("ffRoomPass").textContent = data.room_pass || "—";
-              var wa = document.getElementById("ffWhatsappLink");
-              if (data.whatsapp_link) {
-                wa.href = data.whatsapp_link;
-                wa.style.display = "flex";
+          var wa = document.getElementById("ffWhatsappLink");
+          var extra = document.getElementById("ffRoomInfoExtra");
+            if (data.ok) {
+              document.getElementById("ffRoomSlot").textContent = data.slot_number || "—";
+              document.getElementById("ffRoomId").textContent = data.room_id || "—";
+              document.getElementById("ffRoomPass").textContent = data.room_pass || "—";
+              if (data.room_info) {
+                extra.textContent = data.room_info;
+                extra.style.display = "";
               } else {
-                wa.style.display = "none";
+                extra.style.display = "none";
               }
+              showRoomSection("ready");
+              if (data.room_info) {
+                adminMsg.textContent = data.room_info;
+                adminMsg.style.display = "";
+              } else {
+                adminMsg.style.display = "none";
+              }
+            } else if (data.error === "no_order") {
+              adminMsg.style.display = "none";
+              showRoomSection("join");
+            } else if (data.error === "pending_payment") {
+              adminMsg.style.display = "none";
+              showRoomSection("pay");
+            } else if (data.error === "pending_approval") {
+              adminMsg.style.display = "none";
+              document.getElementById("ffRoomInfoStatusLink").href = "{{ url_for('home') }}";
+              showRoomSection("wait");
+            } else if (data.error === "no_room") {
+              var labelEl = document.getElementById("ffRoomScheduleLabel");
+              if (data.room_schedule_label) {
+                labelEl.textContent = data.room_schedule_label;
+                labelEl.style.display = "";
+              } else if (data.tournament_time) {
+                labelEl.textContent = data.tournament_time;
+                labelEl.style.display = "";
+              } else {
+                labelEl.style.display = "none";
+              }
+              document.getElementById("ffRoomNoRoomOrderId").textContent = data.order_id || "";
+              var extraNoRoom = document.getElementById("ffRoomInfoNoRoomExtra");
+              if (data.room_info) {
+                extraNoRoom.textContent = data.room_info;
+                extraNoRoom.style.display = "";
+              } else {
+                extraNoRoom.style.display = "none";
+              }
+              var noRoomLink = document.getElementById("ffRoomNoRoomStatusLink");
+              if (data.order_id && data.view_token) {
+                noRoomLink.href = "{{ url_for('join_status', order_id=0, t='') }}".replace("/0/", "/" + data.order_id + "/").replace("t=", "t=" + data.view_token);
+                noRoomLink.style.display = "";
+              } else {
+                noRoomLink.style.display = "none";
+              }
+              showRoomSection("noroom");
+              if (data.room_info) {
+                adminMsg.textContent = data.room_info;
+                adminMsg.style.display = "";
+              } else {
+                adminMsg.style.display = "none";
+              }
+            } else {
+              adminMsg.style.display = "none";
+              showRoomSection("join");
+            }
+            // WhatsApp link — always show if available
+            if (data.whatsapp_link) {
+              wa.href = data.whatsapp_link;
+              wa.style.display = "flex";
+            } else {
+              wa.style.display = "none";
+            }
               var extra = document.getElementById("ffRoomInfoExtra");
               if (data.room_info) {
                 extra.textContent = data.room_info;
