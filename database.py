@@ -268,6 +268,26 @@ def complete_gateway_payment(conn, order_id, payment_trx, payment_method):
         """,
         (payment_trx, payment_method, order_id),
     )
+    # Reserve slot for immediate lobby display
+    order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    slot = next_empty_slot(conn, order["tournament_id"])
+    if slot:
+        reserve_slot(conn, slot["id"], order_id, order["squad_name"], order["leader_contact"])
+        conn.execute(
+            "UPDATE orders SET assigned_slot_id = ? WHERE id = ?",
+            (slot["id"], order_id),
+        )
+        # Copy player names to members table so lobby shows them
+        members = conn.execute(
+            "SELECT * FROM order_members WHERE order_id = ? ORDER BY position",
+            (order_id,),
+        ).fetchall()
+        conn.execute("DELETE FROM members WHERE slot_id = ?", (slot["id"],))
+        for m in members:
+            conn.execute(
+                "INSERT INTO members (slot_id, position, display_name, uid) VALUES (?, ?, ?, ?)",
+                (slot["id"], m["position"], m["display_name"], m["uid"]),
+            )
     return True
 
 
@@ -283,8 +303,11 @@ def approve_order_auto(conn, order_id):
     if order["status"] != "pending_approval":
         return False
 
-    # No pre-reserve: pick the next empty slot now
-    slot = next_empty_slot(conn, order["tournament_id"])
+    # Use existing reserved slot if available, otherwise pick next empty
+    if order["assigned_slot_id"]:
+        slot = conn.execute("SELECT * FROM slots WHERE id = ?", (order["assigned_slot_id"],)).fetchone()
+    else:
+        slot = next_empty_slot(conn, order["tournament_id"])
     if not slot:
         return False
     slot_id = slot["id"]
@@ -310,7 +333,7 @@ def approve_order_auto(conn, order_id):
             leader_contact = ?,
             order_id = ?,
             registered_at = datetime('now')
-        WHERE id = ? AND status = 'empty'
+        WHERE id = ? AND status IN ('empty', 'reserved')
         """,
         (order["squad_name"], order["leader_contact"], order_id, slot_id),
     )

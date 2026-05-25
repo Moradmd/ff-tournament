@@ -150,10 +150,15 @@
   const payPageError = document.getElementById("payPageError");
   const submitBtn = document.getElementById("submitBtn");
   const gatewayEnabled = !!window.GATEWAY_ENABLED;
+  const manualPayment = !!window.MANUAL_PAYMENT;
 
   function syncPayUI() {
     if (submitBtn) {
-      submitBtn.textContent = gatewayEnabled ? "Pay ৳ Online" : "Submit Order";
+      if (manualPayment) {
+        submitBtn.textContent = "Submit Order (৳" + (window.ENTRY_FEE || "—") + ")";
+      } else {
+        submitBtn.textContent = gatewayEnabled ? "Pay ৳ Online" : "Submit Order";
+      }
     }
   }
 

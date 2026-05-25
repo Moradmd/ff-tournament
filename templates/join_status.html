@@ -6,15 +6,204 @@
   <title>Order Status</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    #trx-id-input::placeholder { color:rgba(255,255,255,0.5); font-weight:400; text-transform:none; }
+    #trx-id-input:focus { outline:2px solid rgba(255,255,255,0.5); }
+  </style>
 </head>
 <body class="ff-form-page ff-status-page">
   <div class="ff-form-wrap ff-status-wrap">
 
     {% if order.status == 'pending_payment' %}
-    <p class="ff-status-emoji">💳</p>
-    <h1 class="ff-status-title">Payment Pending</h1>
-    <p class="ff-sub ff-bn-only">অর্ডার #{{ order.id }} — অনলাইন পেমেন্ট সম্পন্ন করুন। অন্য লিংকে টাকা পাঠাবেন না।</p>
-    <a href="{{ url_for('join', token=tournament.join_token) }}" class="ff-btn-gold ff-btn-inline">Pay Again</a>
+    <div style="background:#fff;border-radius:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">
+        <button onclick="location.reload()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:16px;"><i class="fa-solid fa-arrow-left"></i></button>
+        <div style="display:flex;gap:12px;">
+          <i class="fa-solid fa-ellipsis-vertical"></i>
+          <button onclick="location.href='{{ url_for('home') }}'" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <div id="method-screen" style="padding:20px;text-align:center;">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
+          <div style="width:48px;height:48px;background:#16a34a;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px;">A5K</div>
+          <div style="text-align:left;">
+            <h3 style="font-weight:800;font-size:14px;color:#1f2937;letter-spacing:0.03em;margin:0;">A5K PRODUCTION</h3>
+            <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">অর্ডার #{{ order.id }} · ৳{{ entry_fee }}</p>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;gap:8px;margin-bottom:24px;">
+          <button onclick="document.getElementById('helpModal').style.display='flex'" style="border:1px solid #e5e7eb;font-size:11px;padding:6px 12px;border-radius:20px;color:#6b7280;background:#fff;cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="fa-solid fa-headset" style="color:#3b82f6;"></i> সাপোর্ট</button>
+          <button onclick="document.getElementById('helpModal').style.display='flex'" style="border:1px solid #e5e7eb;font-size:11px;padding:6px 12px;border-radius:20px;color:#6b7280;background:#fff;cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="fa-solid fa-circle-info" style="color:#3b82f6;"></i> বিস্তারিত</button>
+          <button onclick="alert('পেমেন্ট সাবমিটের পর অ্যাডমিন যাচাই করবেন।')" style="border:1px solid #e5e7eb;font-size:11px;padding:6px 12px;border-radius:20px;color:#6b7280;background:#fff;cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="fa-solid fa-clock" style="color:#3b82f6;"></i> শর্তাবলী</button>
+        </div>
+
+        <div style="background:#2563eb;color:#fff;font-size:12px;font-weight:600;padding:8px;border-radius:8px;margin-bottom:16px;">মোবাইল ব্যাংকিং</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+          <button onclick="openPayment('bkash')" style="border:1px solid #e5e7eb;padding:12px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;transition:border-color 0.2s;height:56px;" onmouseover="this.style.borderColor='#ec4899'" onmouseout="this.style.borderColor='#e5e7eb'">
+            <img src="https://download.logo.wine/logo/BKash/BKash-Logo.wine.png" alt="bKash" style="height:36px;object-fit:contain;" />
+          </button>
+          <button onclick="openPayment('nagad')" style="border:1px solid #e5e7eb;padding:12px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;transition:border-color 0.2s;height:56px;" onmouseover="this.style.borderColor='#ea580c'" onmouseout="this.style.borderColor='#e5e7eb'">
+            <img src="https://download.logo.wine/logo/Nagad/Nagad-Logo.wine.png" alt="Nagad" style="height:36px;object-fit:contain;" />
+          </button>
+        </div>
+
+        <button style="width:100%;background:#dbeafe;color:#2563eb;font-weight:700;font-size:13px;padding:12px;border:none;border-radius:10px;cursor:default;letter-spacing:0.03em;">
+          Pay ৳{{ entry_fee }}.00
+        </button>
+      </div>
+
+      <div id="payment-screen" style="display:none;padding:20px;max-height:80vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:40px;height:40px;background:#16a34a;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:10px;">A5K</div>
+            <div>
+              <h3 style="font-weight:800;font-size:12px;color:#1f2937;margin:0;">A5K PRODUCTION</h3>
+              <p style="font-size:10px;color:#9ca3af;margin:2px 0 0;">অর্ডার #{{ order.id }}</p>
+            </div>
+          </div>
+          <div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;background:#f9fafb;font-weight:800;font-size:14px;color:#374151;flex-shrink:0;">৳{{ entry_fee }}.00</div>
+        </div>
+
+        <div id="instruction-box" style="border-radius:12px;padding:16px;color:#fff;font-size:12px;transition:background 0.3s;">
+          <p style="text-align:center;font-weight:700;font-size:14px;margin:0 0 12px;">ট্রানজেকশন আইডি দিন</p>
+          <input type="text" id="trx-id-input" placeholder="ট্রানজেকশন আইডি দিন" style="width:100%;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:10px;text-align:center;font-size:14px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#fff;outline:none;box-sizing:border-box;margin-bottom:12px;" />
+          <div style="border-top:1px solid rgba(255,255,255,0.2);padding-top:10px;">
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;"><span>•</span><p id="step-code" style="margin:0;word-break:break-word;">ইন্সট্রাকশন লোড হচ্ছে...</p></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;"><span>•</span><p style="margin:0;word-break:break-word;"><strong style="color:#facc15;">"Send Money"</strong> -এ ক্লিক করুন।</p></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:flex-start;gap:6px;flex:1;min-width:0;">
+                <span>•</span>
+                <p style="margin:0;word-break:break-word;">প্রাপক নম্বর হিসেবে এই নম্বরটি লিখুনঃ <span id="target-number" style="font-weight:700;color:#facc15;">01XXXXXXX</span></p>
+              </div>
+              <button onclick="copyNumber()" style="background:rgba(0,0,0,0.25);border:none;color:#fff;font-size:12px;padding:5px 14px;border-radius:6px;cursor:pointer;flex-shrink:0;margin-left:auto;font-weight:600;"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;"><span>•</span><p style="margin:0;word-break:break-word;">টাকার পরিমাণঃ <span style="font-weight:700;color:#facc15;">৳{{ entry_fee }}.00</span></p></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;"><span>•</span><p style="margin:0;word-break:break-word;">নিশ্চিত করতে এখন আপনার পিন লিখুন।</p></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;"><span>•</span><p style="margin:0;word-break:break-word;">সবকিছু ঠিক থাকলে, আপনি একটি নিশ্চিতকরণ বার্তা পাবেন।</p></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;"><span>•</span><p style="margin:0;word-break:break-word;">এখন উপরের বক্সে আপনার <strong style="color:#facc15;">Transaction ID</strong> দিন এবং নিচের <strong style="color:#facc15;">VERIFY</strong> বাটনে ক্লিক করুন।</p></div>
+          </div>
+        </div>
+
+        <button id="verify-btn" onclick="verifyPayment()" style="width:100%;color:#fff;font-size:14px;font-weight:800;padding:12px;border:none;border-radius:10px;cursor:pointer;margin-top:16px;transition:background 0.2s;">
+          VERIFY
+        </button>
+        <p id="manualPayError" style="color:#dc2626;font-size:12px;text-align:center;margin:8px 0 0;display:none;"></p>
+      </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;width:90%;margin:20px;text-align:center;">
+        <div style="width:48px;height:48px;background:#16a34a;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px;margin:0 auto 12px;">A5K</div>
+        <h3 style="font-weight:800;font-size:15px;color:#1f2937;margin:0 0 8px;">পেমেন্ট নির্দেশিকা</h3>
+        <p style="font-size:13px;color:#6b7280;margin:4px 0;"><strong>bKash:</strong> {{ bkash }}</p>
+        <p style="font-size:13px;color:#6b7280;margin:4px 0;"><strong>Nagad:</strong> {{ nagad }}</p>
+        <p style="font-size:12px;color:#9ca3af;margin:12px 0 0;">পেমেন্ট করা মাত্র TrxID দিন। অ্যাডমিন যাচাই করে স্লট দেবেন।</p>
+        <button onclick="document.getElementById('helpModal').style.display='none'" style="width:100%;background:#2563eb;color:#fff;font-weight:700;padding:10px;border:none;border-radius:24px;margin-top:16px;cursor:pointer;">বুঝেছি</button>
+      </div>
+    </div>
+
+    <script>
+      const payData = {
+        bkash: {
+          colorClass: 'bg-pink-700',
+          btnBg: '#be185d',
+          btnHover: '#9d174d',
+          code: '*247# ডায়াল করে আপনার BKASH মোবাইল মেন্যুতে যান অথবা BKASH অ্যাপে যান।',
+          number: '{{ bkash }}'
+        },
+        nagad: {
+          colorClass: 'bg-red-700',
+          btnBg: '#c2410c',
+          btnHover: '#9a3412',
+          code: '*167# ডায়াল করে আপনার NAGAD মোবাইল মেন্যুতে যান অথবা NAGAD অ্যাপে যান।',
+          number: '{{ nagad }}'
+        }
+      };
+      let currentMethod = '';
+
+      function openPayment(method) {
+        currentMethod = method;
+        const d = payData[method];
+        document.getElementById('method-screen').style.display = 'none';
+        document.getElementById('payment-screen').style.display = 'block';
+        document.getElementById('step-code').innerText = d.code;
+        document.getElementById('target-number').innerText = d.number;
+        const box = document.getElementById('instruction-box');
+        box.style.background = d.btnBg;
+        const btn = document.getElementById('verify-btn');
+        btn.style.background = d.btnBg;
+        btn.onmouseover = function(){ this.style.background = d.btnHover; };
+        btn.onmouseout = function(){ this.style.background = d.btnBg; };
+        document.getElementById('manualPayError').style.display = 'none';
+      }
+
+      function copyNumber() {
+        const num = document.getElementById('target-number').innerText;
+        // Try modern clipboard API first, fallback to execCommand for HTTP/phone
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(num).then(() => {
+            alert('নম্বরটি কপি করা হয়েছে: ' + num);
+          }).catch(() => {
+            fallbackCopy(num);
+          });
+        } else {
+          fallbackCopy(num);
+        }
+      }
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          alert('নম্বরটি কপি করা হয়েছে: ' + text);
+        } catch (e) {
+          alert('নম্বর: ' + text + ' — এটি ম্যানুয়ালি কপি করুন');
+        }
+        document.body.removeChild(ta);
+      }
+
+      function verifyPayment() {
+        const trxId = document.getElementById('trx-id-input').value.trim();
+        if (!trxId) { alert('অনুগ্রহ করে ট্রানজেকশন আইডি প্রদান করুন!'); return; }
+        if (!currentMethod) { alert('পেমেন্ট মেথড নির্বাচন করুন'); return; }
+        const btn = document.getElementById('verify-btn');
+        btn.disabled = true;
+        btn.textContent = 'Verifying...';
+        document.getElementById('manualPayError').style.display = 'none';
+        const fd = new FormData();
+        fd.append('order_id', '{{ order.id }}');
+        fd.append('t', '{{ view_token }}');
+        fd.append('payment_method', currentMethod);
+        fd.append('trx_id', trxId);
+        fetch('/api/manual-payment/submit', { method: 'POST', body: fd })
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) {
+              window.location.href = data.redirect || window.location.href;
+            } else {
+              document.getElementById('manualPayError').textContent = data.error || 'ত্রুটি হয়েছে';
+              document.getElementById('manualPayError').style.display = 'block';
+              btn.disabled = false;
+              btn.textContent = 'VERIFY';
+            }
+          })
+          .catch(() => {
+            document.getElementById('manualPayError').textContent = 'নেটওয়ার্ক ত্রুটি — আবার চেষ্টা করুন';
+            document.getElementById('manualPayError').style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'VERIFY';
+          });
+      }
+    </script>
 
     {% elif order.status == 'payment_failed' %}
     <p class="ff-status-emoji">❌</p>

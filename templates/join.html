@@ -52,37 +52,6 @@
         </div>
       </div>
 
-      <div class="ff-card ff-pay-card">
-        <label class="ff-pay-label">Payment — ৳{{ entry_fee }}</label>
-        <input type="hidden" name="payment_mode" value="gateway" />
-
-        <div class="ff-pay-types">
-          {% if gateway_enabled %}
-          <label class="ff-pay-type">
-            <input type="radio" name="pay_type" value="gateway" checked />
-            <span>Online ({{ gateway_name }})</span>
-          </label>
-          {% endif %}
-        </div>
-
-        <p class="ff-highlight-bn">
-          <strong>গুরুত্বপূর্ণ:</strong> নিচের নম্বর/গেটওয়ে ছাড়া অন্য কোথাও টাকা পাঠাবেন না।
-        </p>
-
-        {% if gateway_enabled %}
-          <div id="gatewayPay" class="ff-pay-panel">
-            <div class="ff-gateway-pic ff-gateway-pic--selected">
-              <img src="{{ url_for('static', filename='rupantorpay.jpg') }}" alt="Gateway" />
-            </div>
-            <p class="ff-sub" style="margin-top:8px;">পেমেন্ট সফল হলে নিজে থেকেই অর্ডার অ্যাপ্রুভ হয়ে যাবে।</p>
-          </div>
-        {% endif %}
-
-        {% if not gateway_enabled %}
-          <p class="ff-err">Payment not configured — contact admin.</p>
-        {% endif %}
-      </div>
-
       <p id="payPageError" class="ff-err hidden"></p>
       <p id="formError" class="ff-err hidden"></p>
       <button type="submit" id="submitBtn" class="ff-btn-gold">Submit Order</button>
@@ -97,6 +66,8 @@
     window.FF_UID_MAX = {{ uid_max }};
     window.FF_SERVER = "{{ ff_server }}";
     window.GATEWAY_ENABLED = {{ 'true' if gateway_enabled else 'false' }};
+    window.MANUAL_PAYMENT = {{ 'true' if manual_payment else 'false' }};
+    window.ENTRY_FEE = {{ entry_fee }};
   </script>
   <script src="{{ url_for('static', filename='join.js') }}"></script>
 </body>

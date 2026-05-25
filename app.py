@@ -12,6 +12,7 @@ from config import (
     ADMIN_PIN,
     AUTO_APPROVE_GATEWAY,
     BKASH_NUMBER,
+    ENABLE_MANUAL_PAYMENT,
     ENTRY_FEE,
     FF_SERVER,
     HOST,
@@ -34,6 +35,7 @@ from database import (
     init_db,
     next_empty_slot,
     release_slot_reservation,
+    reserve_slot,
 )
 import payment_gateway
 from sslcommerz import parse_order_id, validate_payment as ssl_validate
@@ -428,6 +430,7 @@ def join(token=None):
         nagad=NAGAD_NUMBER,
         gateway_enabled=payment_gateway.is_enabled(),
         gateway_name=payment_gateway.provider_name(),
+        manual_payment=ENABLE_MANUAL_PAYMENT,
         auto_approve_gateway=AUTO_APPROVE_GATEWAY,
         uid_min=FF_UID_MIN_LEN,
         uid_max=FF_UID_MAX_LEN,
@@ -516,13 +519,13 @@ def join_submit():
     if err:
         return jsonify({"ok": False, "error": err}), 400
 
-    # Payment — only online gateway
+    # Payment — manual (bKash/Nagad) or online gateway
     if not payment_gateway.is_enabled():
-        return jsonify({"ok": False, "error": "অনলাইন পেমেন্ট এখন চালু নেই"}), 400
+        return jsonify({"ok": False, "error": "পেমেন্ট কনফিগার করা নেই"}), 400
     payment_method = payment_gateway.provider_slug()
     payment_trx = "PENDING"
     order_status = "pending_payment"
-    use_gateway = True
+    use_gateway = not ENABLE_MANUAL_PAYMENT
 
     with get_db() as conn:
         tournament = get_tournament(conn)
@@ -817,6 +820,68 @@ def rupantor_webhook():
     return "OK", 200
 
 
+@app.route("/api/manual-payment/submit", methods=["POST"])
+def manual_payment_submit():
+    order_id = request.form.get("order_id", type=int)
+    view_token = (request.form.get("t") or "").strip()
+    payment_method = (request.form.get("payment_method") or "").strip().lower()
+    trx_id = (request.form.get("trx_id") or "").strip()
+
+    if not order_id or not view_token or not payment_method or not trx_id:
+        return jsonify({"ok": False, "error": "সব তথ্য দিন"}), 400
+    if payment_method not in ("bkash", "nagad"):
+        return jsonify({"ok": False, "error": "পেমেন্ট মেথড সঠিক নয়"}), 400
+    if len(trx_id) < 4:
+        return jsonify({"ok": False, "error": "ট্রানজেকশন আইডি সঠিক নয়"}), 400
+
+    with get_db() as conn:
+        order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        if not order:
+            return jsonify({"ok": False, "error": "অর্ডার পাওয়া যায়নি"}), 404
+        vt = order["view_token"] if "view_token" in order.keys() else ""
+        if not vt or vt != view_token:
+            return jsonify({"ok": False, "error": "Invalid token"}), 404
+        if (order["status"] or "") != "pending_payment":
+            return jsonify({"ok": False, "error": "এই অর্ডার পেমেন্ট স্টেজে নেই"}), 400
+
+        conn.execute(
+            """
+            UPDATE orders
+            SET status = 'pending_approval',
+                payment_trx = ?,
+                payment_method = ?
+            WHERE id = ?
+            """,
+            (trx_id, payment_method, order_id),
+        )
+
+        # Reserve slot for immediate lobby display
+        order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        slot = next_empty_slot(conn, order["tournament_id"])
+        if slot:
+            reserve_slot(conn, slot["id"], order_id, order["squad_name"], order["leader_contact"])
+            conn.execute(
+                "UPDATE orders SET assigned_slot_id = ? WHERE id = ?",
+                (slot["id"], order_id),
+            )
+            # Copy player names to members table so lobby shows them
+            members = conn.execute(
+                "SELECT * FROM order_members WHERE order_id = ? ORDER BY position",
+                (order_id,),
+            ).fetchall()
+            conn.execute("DELETE FROM members WHERE slot_id = ?", (slot["id"],))
+            for m in members:
+                conn.execute(
+                    "INSERT INTO members (slot_id, position, display_name, uid) VALUES (?, ?, ?, ?)",
+                    (slot["id"], m["position"], m["display_name"], m["uid"]),
+                )
+
+    return jsonify({
+        "ok": True,
+        "redirect": url_for("join_status", order_id=order_id, t=view_token),
+    })
+
+
 def _join_redirect(pay_error=None):
     with get_db() as conn:
         t = get_tournament(conn)
@@ -960,6 +1025,8 @@ def join_status(order_id):
         squad_size=SQUAD_SIZE,
         tournament=tournament,
         entry_fee=ENTRY_FEE,
+        bkash=BKASH_NUMBER,
+        nagad=NAGAD_NUMBER,
         whatsapp_group_link=_get_whatsapp_link(tournament),
         view_token=view_token,
         room_schedule_label=_room_schedule_label(tournament),
@@ -1659,6 +1726,73 @@ def release_slot(slot_id):
             (slot_id,),
         )
     return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/api/restore", methods=["POST"])
+def admin_restore():
+    if not require_admin():
+        return jsonify({"ok": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"ok": False, "error": "Invalid JSON"}), 400
+
+    with get_db() as conn:
+        # Restore orders
+        for o in data.get("orders", []):
+            exists = conn.execute("SELECT id FROM orders WHERE id = ?", (o["id"],)).fetchone()
+            if not exists:
+                conn.execute(
+                    """
+                    INSERT INTO orders (id, tournament_id, squad_name, leader_contact, status,
+                        payment_method, payment_trx, gateway_tran_id, auto_approved,
+                        assigned_slot_id, created_at, reviewed_at, view_token)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        o["id"], o.get("tournament_id", 1), o.get("squad_name", ""),
+                        o["leader_contact"], o.get("status", "approved"),
+                        o.get("payment_method", "bkash"), o.get("payment_trx", ""),
+                        o.get("gateway_trx_id", o.get("gateway_tran_id", "")),
+                        o.get("auto_approved", 1),
+                        o.get("assigned_slot_id"), o.get("created_at"),
+                        o.get("reviewed_at"), o.get("view_token", "restore"),
+                    ),
+                )
+
+        # Restore order_members
+        for om in data.get("order_members", []):
+            exists = conn.execute(
+                "SELECT id FROM order_members WHERE order_id = ? AND position = ?",
+                (om["order_id"], om["position"]),
+            ).fetchone()
+            if not exists:
+                conn.execute(
+                    "INSERT INTO order_members (order_id, position, display_name, uid) VALUES (?, ?, ?, ?)",
+                    (om["order_id"], om["position"], om["display_name"], om.get("uid", "")),
+                )
+
+        # Restore slots
+        for s in data.get("slots", []):
+            conn.execute(
+                """
+                UPDATE slots SET status = ?, squad_name = ?, leader_contact = ?,
+                    order_id = ?, registered_at = datetime('now')
+                WHERE id = ?
+                """,
+                (s.get("status", "registered"), s["squad_name"],
+                 s.get("leader_contact", ""), s["order_id"], s["id"]),
+            )
+
+        # Restore members
+        conn.execute("DELETE FROM members")
+        for m in data.get("members", []):
+            conn.execute(
+                "INSERT INTO members (slot_id, position, display_name, uid) VALUES (?, ?, ?, ?)",
+                (m["slot_id"], m["position"], m["display_name"], m.get("uid", "")),
+            )
+
+    return jsonify({"ok": True})
 
 
 @app.route("/api/export")

@@ -42,8 +42,8 @@
 
     <div class="ff-slots">
       {% for slot in slots %}
-      <div class="ff-slot-block">
-        <div class="ff-squad-label">{% if slot.squad_name %}{{ slot.squad_name }}{% else %}—{% endif %}</div>
+      <div class="ff-slot-block {% if slot.status == 'reserved' %}ff-slot-pending{% endif %}">
+        <div class="ff-squad-label">{% if slot.squad_name %}{{ slot.squad_name }}{% else %}—{% endif %}{% if slot.status == 'reserved' %} <span class="ff-pending-badge">⏳ Pending</span>{% endif %}</div>
         <div class="ff-team">
           <div class="ff-team-num">{{ slot.slot_number }}</div>
           <div class="ff-team-rows">
@@ -468,11 +468,19 @@
             var block = slotBlocks[idx];
             if (!block) return;
             var prev = slotStates[idx];
-            if (prev === s.squad_name) return; // skip if same
+            if (prev === s.squad_name && block.dataset.ffStatus === s.status) return;
             slotStates[idx] = s.squad_name;
+            block.dataset.ffStatus = s.status || "";
+            block.classList.toggle("ff-slot-pending", s.status === "reserved");
             // Update squad label
             var labelEl = block.querySelector(".ff-squad-label");
-            if (labelEl) labelEl.textContent = s.squad_name || "—";
+            if (labelEl) {
+              if (s.status === "reserved") {
+                labelEl.innerHTML = (s.squad_name || "\u2014") + ' <span class="ff-pending-badge">\u23F3 Pending</span>';
+              } else {
+                labelEl.textContent = s.squad_name || "\u2014";
+              }
+            }
             // Update player rows
             var rows = block.querySelectorAll(".ff-player-row");
             s.players.forEach(function (p, pi) {

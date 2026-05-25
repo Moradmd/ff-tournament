@@ -43,7 +43,7 @@ ENTRY_FEE = os.getenv("ENTRY_FEE", "50")
 PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "auto").strip().lower()
 
 # Manual payment toggle (for testing or manual trx approval workflow)
-ENABLE_MANUAL_PAYMENT = False
+ENABLE_MANUAL_PAYMENT = True
 
 # WhatsApp group (approved players only)
 WHATSAPP_GROUP_LINK = os.getenv(

@@ -1,18 +1,24 @@
-"""Active payment gateway — RupantorPay / bKash / SSLCommerz."""
+"""Active payment gateway — Manual (bKash/Nagad) / RupantorPay / bKash API / SSLCommerz."""
 
 import sslcommerz
 import rupantorpay
 import bkash
 
-from config import PAYMENT_PROVIDER
+from config import PAYMENT_PROVIDER, ENABLE_MANUAL_PAYMENT
+
+
+def is_manual_enabled():
+    return bool(ENABLE_MANUAL_PAYMENT)
 
 
 def is_enabled():
-    return bool(provider_slug())
+    return is_manual_enabled() or bool(provider_slug())
 
 
 def provider_name():
     slug = provider_slug()
+    if slug == "manual":
+        return "bKash / Nagad"
     return {
         "rupantorpay": "RupantorPay",
         "bkash": "bKash",
@@ -21,6 +27,8 @@ def provider_name():
 
 
 def provider_slug():
+    if is_manual_enabled():
+        return "manual"
     p = (PAYMENT_PROVIDER or "auto").strip().lower()
     if p in ("", "auto"):
         if rupantorpay.is_configured():
