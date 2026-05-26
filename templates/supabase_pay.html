@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Payment — {{ tournament.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    .pay-shell { max-width: 440px; margin: 0 auto; padding: 16px; }
+    .pay-card { border: 2px solid #e5e7eb; border-radius: 10px; padding: 16px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; background: #fff; }
+    .pay-card.selected { border-color: #e2136e; box-shadow: 0 0 0 3px rgba(226,19,110,0.35); }
+    .pay-card.selected.nagad { border-color: #f6921e; box-shadow: 0 0 0 3px rgba(246,146,30,0.35); }
+    .instruction-box { border-radius: 12px; padding: 16px; color: #fff; font-size: 13px; transition: background 0.3s; }
+    .instruction-box li { margin-bottom: 8px; }
+    .instruction-box code { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; }
+    .trx-input { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; text-align: center; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; box-sizing: border-box; margin-bottom: 12px; color: #333; }
+    .trx-input::placeholder { color: #aaa; font-weight: 400; text-transform: none; }
+    .status-box { padding: 12px; border-radius: 8px; font-size: 13px; display: none; margin: 12px 0; }
+    .status-box.show { display: block; }
+    .status-box.success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .status-box.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .status-box.info { background: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
+  </style>
+</head>
+<body class="ff-form-page">
+  <div class="ff-form-wrap">
+    <div class="pay-shell">
+
+      <!-- Method Selection Screen -->
+      <div id="methodScreen">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div style="width:48px;height:48px;background:#16a34a;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px;">A5K</div>
+          <div>
+            <h3 style="font-weight:800;font-size:15px;color:#1f2937;margin:0;">{{ tournament.name }}</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">অর্ডার #{{ order.id }} · ৳{{ entry_fee }}</p>
+          </div>
+        </div>
+
+        <div style="background:#2563eb;color:#fff;font-size:12px;font-weight:600;padding:8px;border-radius:8px;text-align:center;margin-bottom:16px;">মোবাইল ব্যাংকিং</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+          <button type="button" onclick="selectMethod('bkash')" class="pay-card" id="cardBkash">
+            <img src="https://download.logo.wine/logo/BKash/BKash-Logo.wine.png" alt="bKash" style="height:36px;object-fit:contain;" />
+          </button>
+          <button type="button" onclick="selectMethod('nagad')" class="pay-card" id="cardNagad">
+            <img src="https://download.logo.wine/logo/Nagad/Nagad-Logo.wine.png" alt="Nagad" style="height:36px;object-fit:contain;" />
+          </button>
+        </div>
+
+        <button type="button" id="btnContinue" disabled style="width:100%;background:#dbeafe;color:#2563eb;font-weight:700;font-size:14px;padding:12px;border:none;border-radius:10px;cursor:pointer;letter-spacing:0.03em;">
+          Pay ৳{{ entry_fee }}.00
+        </button>
+      </div>
+
+      <!-- Payment Screen -->
+      <div id="paymentScreen" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <button type="button" onclick="backToMethod()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:18px;"><i class="fa-solid fa-arrow-left"></i></button>
+          <div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;background:#f9fafb;font-weight:800;font-size:14px;color:#374151;">৳{{ entry_fee }}.00</div>
+        </div>
+
+        <div class="instruction-box" id="instructionBox">
+          <p style="text-align:center;font-weight:700;font-size:14px;margin:0 0 12px;">ট্রানজেকশন আইডি দিন</p>
+          <input type="text" id="trxId" class="trx-input" placeholder="ট্রানজেকশন আইডি দিন" autocomplete="off" />
+          <ol id="instructionsList"></ol>
+        </div>
+
+        <div class="status-box" id="statusBox"></div>
+
+        <button type="button" id="btnVerify" class="ff-btn-gold" style="width:100%;margin-top:8px;">VERIFY</button>
+
+        <div style="margin-top:12px;padding:10px 12px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;font-size:12px;color:#475569;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="autoPoll" checked /> Auto-detect payment — poll every 3s
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    window.ORDER_ID = {{ order.id }};
+    window.VIEW_TOKEN = "{{ view_token }}";
+    window.ENTRY_FEE = {{ entry_fee }};
+    window.BKASH_NUMBER = "{{ bkash }}";
+    window.NAGAD_NUMBER = "{{ nagad }}";
+    window.SUPABASE_URL = "{{ supabase_url }}";
+    window.SUPABASE_ANON_KEY = "{{ supabase_anon_key }}";
+    window.SUPABASE_TABLE = "{{ supabase_table }}";
+  </script>
+  <script src="{{ url_for('static', filename='supabase_pay.js') }}"></script>
+</body>
+</html>

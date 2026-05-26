@@ -1,0 +1,18 @@
+=========== DEPLOY INFO (backup) ===========
+
+GitHub:
+  Repo: https://github.com/Moradmd/ff-tournament
+  Remote: https://github.com/Moradmd/ff-tournament.git
+
+Render:
+  URL: https://ff-tournament-406b.onrender.com
+  Health: https://ff-tournament-406b.onrender.com/health
+  Service: ff-tournament-406b
+  Start Command: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+  Python: 3.12.3
+
+Supabase (web-test):
+  URL: https://hagdsperugkfeoqlokrl.supabase.co
+  Table: transactions
+
+============================================

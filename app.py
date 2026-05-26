@@ -5,6 +5,7 @@ import traceback
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 import re
+import requests as http_req
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
 
@@ -20,6 +21,9 @@ from config import (
     PORT,
     PUBLIC_BASE_URL,
     SECRET_KEY,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    SUPABASE_TABLE,
     WHATSAPP_GROUP_LINK,
 )
 from database import (
@@ -595,7 +599,12 @@ def join_submit():
         if use_gateway:
             client_host = request.host.split(":")[0] if request.host else "127.0.0.1"
             slug = payment_gateway.provider_slug()
-            if slug == "rupantorpay":
+            if slug == "supabase":
+                success_url = external_url("supabase_pay", order_id=order_id)
+                fail_url = success_url
+                cancel_url = success_url
+                webhook_url = success_url
+            elif slug == "rupantorpay":
                 success_url = external_url("rupantor_success", order_id=order_id)
                 cancel_url = external_url("rupantor_cancel", order_id=order_id)
                 webhook_url = external_url("rupantor_webhook")
@@ -979,6 +988,110 @@ def bkash_callback():
         tok = conn.execute("SELECT view_token FROM orders WHERE id = ?", (order_id,)).fetchone()
         t = tok["view_token"] if tok else ""
     return redirect(url_for("join_status", order_id=order_id, t=t))
+
+
+@app.route("/payment/supabase")
+def supabase_pay():
+    """Supabase auto-detect payment page — shows instructions + polls Supabase."""
+    order_id = request.args.get("order_id", type=int)
+    if not order_id:
+        return _join_redirect("Order ID missing")
+    with get_db() as conn:
+        order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        if not order:
+            abort(404)
+        vt = order["view_token"] if "view_token" in order.keys() else ""
+        view_token = request.args.get("t") or vt
+        if vt and view_token and view_token != vt:
+            abort(404)
+        tournament = get_tournament(conn)
+    return render_template(
+        "supabase_pay.html",
+        order=dict(order),
+        tournament=tournament,
+        view_token=view_token,
+        entry_fee=ENTRY_FEE,
+        bkash=BKASH_NUMBER,
+        nagad=NAGAD_NUMBER,
+        supabase_url=SUPABASE_URL,
+        supabase_anon_key=SUPABASE_ANON_KEY,
+        supabase_table=SUPABASE_TABLE,
+    )
+
+
+@app.route("/api/verify-supabase-payment", methods=["POST"])
+def verify_supabase_payment():
+    """Server-side verify: check Supabase for trx_id, mark used, complete order."""
+    order_id = request.form.get("order_id", type=int)
+    trx_id = (request.form.get("trx_id") or "").strip()
+    view_token = (request.form.get("t") or "").strip()
+
+    if not order_id or not trx_id:
+        return jsonify({"ok": False, "error": "order_id and trx_id required"}), 400
+
+    # Verify Supabase transaction is valid + unused
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+        "Content-Type": "application/json",
+    }
+    table_url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}"
+    query = f"trx_id=eq.{trx_id}&status=eq.unused&select=trx_id,amount,status"
+    try:
+        resp = http_req.get(f"{table_url}?{query}", headers=headers, timeout=10)
+        if not resp.ok:
+            return jsonify({"ok": False, "error": "Supabase query failed"}), 502
+        rows = resp.json()
+        if not rows:
+            return jsonify({"ok": False, "error": "Transaction not found or already used"}), 404
+        row = rows[0]
+        paid_amount = float(row.get("amount") or 0)
+        required = float(ENTRY_FEE)
+        if paid_amount < required:
+            return jsonify({
+                "ok": False,
+                "error": f"Amount ৳{paid_amount:.0f} is less than entry fee ৳{required:.0f}. Send at least ৳{required:.0f}"
+            }), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Supabase error: {e}"}), 502
+
+    # Mark as used in Supabase
+    patch_query = f"trx_id=eq.{trx_id}"
+    try:
+        patch_resp = http_req.patch(
+            f"{table_url}?{patch_query}",
+            headers={**headers, "Prefer": "return=minimal"},
+            json={"status": "used"},
+            timeout=10,
+        )
+        if not patch_resp.ok:
+            return jsonify({"ok": False, "error": "Failed to mark transaction used"}), 502
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Supabase mark error: {e}"}), 502
+
+    # Complete the order in ff-tournament — always auto-approve for Supabase
+    with get_db() as conn:
+        order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        if not order:
+            return jsonify({"ok": False, "error": "Order not found"}), 404
+        vt = order["view_token"] if "view_token" in order.keys() else ""
+        if vt and view_token and view_token != vt:
+            return jsonify({"ok": False, "error": "Invalid token"}), 404
+        if order["status"] not in ("pending_payment",):
+            return jsonify({"ok": False, "error": "Order not in payment state"}), 400
+
+        complete_gateway_payment(conn, order_id, trx_id, "supabase")
+        ok = approve_order_auto(conn, order_id)
+        if not ok:
+            return jsonify({"ok": False, "error": "All slots full — admin e contact korun"}), 409
+
+    with get_db() as conn:
+        tok = conn.execute("SELECT view_token FROM orders WHERE id = ?", (order_id,)).fetchone()
+        t = tok["view_token"] if tok else ""
+    return jsonify({
+        "ok": True,
+        "redirect": url_for("join_status", order_id=order_id, t=t),
+    })
 
 
 @app.route("/join/status/<int:order_id>")

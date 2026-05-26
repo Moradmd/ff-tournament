@@ -1,10 +1,15 @@
-"""Active payment gateway — Manual (bKash/Nagad) / RupantorPay / bKash API / SSLCommerz."""
+"""Active payment gateway — Manual (bKash/Nagad) / Supabase / RupantorPay / bKash API / SSLCommerz."""
 
 import sslcommerz
 import rupantorpay
 import bkash
 
-from config import PAYMENT_PROVIDER, ENABLE_MANUAL_PAYMENT
+from config import (
+    PAYMENT_PROVIDER,
+    ENABLE_MANUAL_PAYMENT,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+)
 
 
 def is_manual_enabled():
@@ -15,10 +20,16 @@ def is_enabled():
     return is_manual_enabled() or bool(provider_slug())
 
 
+def _is_supabase_configured():
+    return bool(SUPABASE_URL and SUPABASE_ANON_KEY)
+
+
 def provider_name():
     slug = provider_slug()
     if slug == "manual":
         return "bKash / Nagad"
+    if slug == "supabase":
+        return "Supabase Auto-Detect"
     return {
         "rupantorpay": "RupantorPay",
         "bkash": "bKash",
@@ -31,6 +42,8 @@ def provider_slug():
         return "manual"
     p = (PAYMENT_PROVIDER or "auto").strip().lower()
     if p in ("", "auto"):
+        if _is_supabase_configured():
+            return "supabase"
         if rupantorpay.is_configured():
             return "rupantorpay"
         if bkash.is_configured():
@@ -39,6 +52,8 @@ def provider_slug():
             return "sslcommerz"
         return ""
 
+    if p == "supabase" and _is_supabase_configured():
+        return "supabase"
     if p in ("bkash", "b-kash") and bkash.is_configured():
         return "bkash"
     if p in ("rupantorpay", "rupantor") and rupantorpay.is_configured():
@@ -62,6 +77,15 @@ def start_checkout(
     client_host=None,
 ):
     slug = provider_slug()
+
+    if slug == "supabase":
+        # Supabase — redirect to internal payment page that polls for transaction
+        # success_url will be used as the payment page URL
+        return {
+            "ok": True,
+            "gateway_url": success_url,
+            "tran_id": None,
+        }
 
     if slug == "rupantorpay":
         return rupantorpay.create_checkout(

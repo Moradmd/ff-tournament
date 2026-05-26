@@ -43,7 +43,8 @@ ENTRY_FEE = os.getenv("ENTRY_FEE", "50")
 PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "auto").strip().lower()
 
 # Manual payment toggle (for testing or manual trx approval workflow)
-ENABLE_MANUAL_PAYMENT = True
+# 1 = ON (bKash/Nagad manual trx entry), 0 = OFF (auto-detect gateways like Supabase)
+ENABLE_MANUAL_PAYMENT = os.getenv("ENABLE_MANUAL_PAYMENT", "0") == "1"
 
 # WhatsApp group (approved players only)
 WHATSAPP_GROUP_LINK = os.getenv(
@@ -96,3 +97,8 @@ BKASH_APP_SECRET = os.getenv("BKASH_APP_SECRET", "")
 SSLCOMMERZ_STORE_ID = os.getenv("SSLCOMMERZ_STORE_ID", "")
 SSLCOMMERZ_STORE_PASS = os.getenv("SSLCOMMERZ_STORE_PASS", "")
 SSLCOMMERZ_IS_LIVE = os.getenv("SSLCOMMERZ_IS_LIVE", "0") == "1"
+
+# Supabase (auto-detect payment via polling)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+SUPABASE_TABLE = os.getenv("SUPABASE_TABLE", "transactions")
