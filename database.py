@@ -6,7 +6,9 @@ from pathlib import Path
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-if DATABASE_URL:
+if DATABASE_URL and (
+    DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://")
+):
     import psycopg2
     from psycopg2.extras import RealDictCursor
     IS_PG = True
@@ -103,6 +105,13 @@ class _Connection:
         else:
             cur = self._conn.execute(sql, params)
         return _Cursor(cur, self._is_pg)
+
+    def executescript(self, sql):
+        if self._is_pg:
+            cur = self._conn.cursor()
+            cur.execute(sql)
+        else:
+            self._conn.executescript(sql)
 
     def commit(self):
         self._conn.commit()
