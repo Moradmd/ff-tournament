@@ -1860,7 +1860,7 @@ def admin_register_team():
 
         now = datetime.utcnow().isoformat()
         view_token = secrets.token_urlsafe(16)
-        conn.execute(
+        cur = conn.execute(
             """
             INSERT INTO orders (tournament_id, squad_name, leader_contact, status,
                 payment_method, payment_trx, auto_approved, created_at, reviewed_at, view_token)
@@ -1868,7 +1868,7 @@ def admin_register_team():
             """,
             (tournament["id"], squad_name, leader_contact, now, now, view_token),
         )
-        order_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        order_id = cur.lastrowid
 
         for pos in range(1, 5):
             name = (request.form.get(f"player_{pos}") or "").strip()
