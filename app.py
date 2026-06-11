@@ -1130,6 +1130,7 @@ def join_status(order_id):
             }
 
     auto_redirect = request.args.get("auto", type=int) == 1
+    admin_reg = request.args.get("admin_reg", type=int) == 1
     return render_template(
         "join_status.html",
         order=order,
@@ -1144,6 +1145,7 @@ def join_status(order_id):
         view_token=view_token,
         room_schedule_label=_room_schedule_label(tournament),
         auto_redirect=auto_redirect,
+        admin_reg=admin_reg,
     )
 
 
@@ -1902,7 +1904,7 @@ def admin_register_team():
             (slot["id"], order_id),
         )
 
-    return redirect(url_for("admin_dashboard") + "?registered=1")
+    return redirect(url_for("join_status", order_id=order_id, t=view_token, admin_reg=1))
 
 
 @app.route("/admin/slot/<int:slot_id>/edit-squad", methods=["POST"])

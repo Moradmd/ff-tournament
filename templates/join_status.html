@@ -15,6 +15,17 @@
 <body class="ff-form-page ff-status-page">
   <div class="ff-form-wrap ff-status-wrap">
 
+    {% if admin_reg %}
+    <div style="background:#1a472a;border:2px solid #2dd4bf;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;">
+      <p style="color:#fff;font-size:14px;font-weight:700;margin:0 0 8px;">✅ Squad Registered — Share এই Link টি Player কে দিন</p>
+      <div style="display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;">
+        <input type="text" id="reg-link-input" readonly value="{{ request.url }}" style="flex:1;background:transparent;border:none;color:#fff;font-size:12px;font-family:monospace;outline:none;" />
+        <button onclick="navigator.clipboard.writeText(document.getElementById('reg-link-input').value).then(()=>{this.textContent='Copied!';setTimeout(()=>{this.textContent='Copy'},2000)}).catch(()=>{alert('Copy manually')})" style="background:#2dd4bf;border:none;color:#0a0a1a;font-weight:700;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;flex-shrink:0;">Copy</button>
+      </div>
+      <a href="{{ url_for('admin_dashboard') }}" style="display:inline-block;margin-top:10px;color:#2dd4bf;font-size:12px;">← Admin Dashboard এ ফিরুন</a>
+    </div>
+    {% endif %}
+
     {% if order.status == 'pending_payment' %}
     <div style="background:#fff;border-radius:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">
