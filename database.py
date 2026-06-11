@@ -307,6 +307,8 @@ def _migrate(conn):
     _add_column(conn, "orders", "gateway_tran_id", "TEXT")
     _add_column(conn, "orders", "auto_approved", "INTEGER DEFAULT 0")
     _add_column(conn, "orders", "view_token", "TEXT")
+    _add_column(conn, "orders", "claim_token", "TEXT")
+    _add_column(conn, "orders", "claimed_contact", "TEXT")
     _add_column(conn, "orders", "player_changes_left", "INTEGER DEFAULT 2")
 
     for col, typ in (

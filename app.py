@@ -1094,6 +1094,65 @@ def verify_supabase_payment():
     })
 
 
+@app.route("/claim/<token>")
+def claim_squad(token):
+    token = (token or "").strip()
+    error = request.args.get("error") or ""
+    claimed = request.args.get("claimed") == "1"
+
+    with get_db() as conn:
+        order = conn.execute(
+            "SELECT * FROM orders WHERE claim_token = ?", (token,)
+        ).fetchone()
+        if not order:
+            abort(404)
+        if order["status"] != "approved":
+            return render_template("claim.html", error="এই স্লট আর সক্রিয় নেই", token=token, claimed=False, order=None)
+        if order.get("claimed_contact"):
+            player_contact = order["claimed_contact"]
+            vt = order["view_token"] if "view_token" in order.keys() else ""
+            return redirect(url_for("join_status", order_id=order["id"], t=vt))
+        tournament = get_tournament(conn)
+        members = conn.execute(
+            "SELECT * FROM order_members WHERE order_id = ? ORDER BY position",
+            (order["id"],),
+        ).fetchall()
+
+    return render_template(
+        "claim.html",
+        token=token,
+        error=error,
+        claimed=claimed,
+        order=dict(order),
+        members=members,
+        tournament=tournament,
+        entry_fee=ENTRY_FEE,
+    )
+
+
+@app.route("/claim/<token>/submit", methods=["POST"])
+def claim_squad_submit(token):
+    contact = (request.form.get("contact") or "").strip()
+    if not contact:
+        return redirect(url_for("claim_squad", token=token, error="মোবাইল নম্বর দিন"))
+
+    with get_db() as conn:
+        order = conn.execute(
+            "SELECT * FROM orders WHERE claim_token = ?", (token,)
+        ).fetchone()
+        if not order:
+            abort(404)
+        if order.get("claimed_contact"):
+            return redirect(url_for("claim_squad", token=token, error="ইতিমধ্যে ক্লেইম করা হয়েছে"))
+        conn.execute(
+            "UPDATE orders SET claimed_contact = ?, leader_contact = ? WHERE id = ?",
+            (contact, contact, order["id"]),
+        )
+        vt = order["view_token"] if "view_token" in order.keys() else ""
+
+    return redirect(url_for("join_status", order_id=order["id"], t=vt))
+
+
 @app.route("/join/status/<int:order_id>")
 def join_status(order_id):
     view_token = (request.args.get("t") or "").strip()
@@ -1851,7 +1910,7 @@ def admin_register_team():
 
     squad_name = (request.form.get("squad_name") or "").strip()
     leader_contact = (request.form.get("leader_contact") or "").strip()
-    if not squad_name or not leader_contact:
+    if not squad_name:
         return redirect(url_for("admin_dashboard") + "?error=missing_fields")
 
     with get_db() as conn:
@@ -1862,13 +1921,15 @@ def admin_register_team():
 
         now = datetime.utcnow().isoformat()
         view_token = secrets.token_urlsafe(16)
+        claim_token = secrets.token_urlsafe(16)
         cur = conn.execute(
             """
             INSERT INTO orders (tournament_id, squad_name, leader_contact, status,
-                payment_method, payment_trx, auto_approved, created_at, reviewed_at, view_token)
-            VALUES (?, ?, ?, 'approved', 'manual', 'ADMIN', 1, ?, ?, ?)
+                payment_method, payment_trx, auto_approved, created_at, reviewed_at,
+                view_token, claim_token)
+            VALUES (?, ?, ?, 'approved', 'manual', 'ADMIN', 1, ?, ?, ?, ?)
             """,
-            (tournament["id"], squad_name, leader_contact, now, now, view_token),
+            (tournament["id"], squad_name, leader_contact, now, now, view_token, claim_token),
         )
         order_id = cur.lastrowid
 
@@ -1904,7 +1965,8 @@ def admin_register_team():
             (slot["id"], order_id),
         )
 
-    return redirect(url_for("join_status", order_id=order_id, t=view_token, admin_reg=1))
+    claim_url = url_for("claim_squad", token=claim_token, _external=True)
+    return render_template("claim_link.html", claim_url=claim_url, order_id=order_id, squad_name=squad_name)
 
 
 @app.route("/admin/slot/<int:slot_id>/edit-squad", methods=["POST"])

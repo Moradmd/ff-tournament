@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Claim Link Created</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
+</head>
+<body class="ff-form-page">
+  <div class="ff-form-wrap" style="max-width:500px;">
+    <div style="background:#1a472a;border:2px solid #2dd4bf;border-radius:12px;padding:20px;text-align:center;">
+      <p style="color:#2dd4bf;font-size:20px;font-weight:900;margin:0 0 6px;">✅ Squad Registered!</p>
+      <p style="color:#fff;font-size:13px;margin:0 0 14px;"><strong>{{ squad_name }}</strong> — Order #{{ order_id }}</p>
+
+      <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+        <p style="color:#94a3b8;font-size:11px;margin:0 0 4px;text-align:left;">Player কে এই Link পাঠান — সে নিজের নম্বর দিয়ে Claim করবে:</p>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="claimLinkInput" readonly value="{{ claim_url }}" style="flex:1;background:transparent;border:1px solid rgba(45,212,191,0.3);border-radius:6px;color:#fff;font-size:12px;font-family:monospace;padding:8px;outline:none;" />
+          <button onclick="copyLink()" id="copyBtn" style="background:#2dd4bf;border:none;color:#0a0a1a;font-weight:700;font-size:12px;padding:8px 16px;border-radius:6px;cursor:pointer;flex-shrink:0;">Copy</button>
+        </div>
+      </div>
+
+      <a href="{{ url_for('admin_dashboard') }}" style="display:inline-block;color:#2dd4bf;font-size:13px;margin-top:6px;">← Admin Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    function copyLink() {
+      var inp = document.getElementById('claimLinkInput');
+      var btn = document.getElementById('copyBtn');
+      navigator.clipboard.writeText(inp.value).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      }).catch(function() {
+        inp.select();
+        document.execCommand('copy');
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
