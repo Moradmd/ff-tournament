@@ -404,6 +404,9 @@
       try {
         localStorage.setItem("ff_last_status_url", window.location.pathname + window.location.search);
         localStorage.setItem("ff_join_epoch", "{{ tournament.join_epoch or 1 }}");
+        {% if order.leader_contact %}
+          localStorage.setItem("ff_contact", "{{ order.leader_contact }}");
+        {% endif %}
         {% if order.status == 'approved' %}
           localStorage.setItem(
             "ff_last_room_url",
