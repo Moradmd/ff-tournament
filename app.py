@@ -1128,7 +1128,7 @@ def claim_squad(token):
     already_claimed = bool(already)
 
     if already_claimed:
-        return redirect(url_for("home"))
+        return render_template("claim.html", already_used=True, lobby_url=url_for("home"))
 
     return render_template(
         "claim.html",

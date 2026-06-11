@@ -3,26 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Claiming Squad...</title>
+  <title>{% if already_used %}Already Claimed{% else %}Claiming Squad...{% endif %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
   <style>
     body { display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0; }
-    .claim-box { text-align:center;padding:24px; }
+    .claim-box { text-align:center;padding:24px;max-width:360px; }
     .spinner { width:40px;height:40px;border:3px solid rgba(45,212,191,0.2);border-top-color:var(--ff-teal);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px; }
     @keyframes spin { to { transform:rotate(360deg); } }
   </style>
 </head>
 <body>
   <div class="claim-box">
+    {% if already_used %}
+    <p style="font-size:40px;margin:0 0 12px;">⚠️</p>
+    <p style="color:var(--ff-text);font-size:16px;font-weight:700;margin:0 0 8px;">এই লিংক ইতিমধ্যে ব্যবহার করা হয়েছে</p>
+    <p style="color:var(--ff-muted);font-size:13px;margin:0 0 16px;">আপনার ইতিমধ্যে একটি স্লট রয়েছে। নতুন করে রেজিস্টার করতে নিচের বাটনে ক্লিক করুন।</p>
+    <a href="{{ lobby_url }}" style="display:inline-block;background:#2dd4bf;color:#0a0a1a;font-weight:700;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;">Lobby তে যান</a>
+    {% else %}
     <div class="spinner"></div>
     <p style="color:var(--ff-text);font-size:16px;font-weight:700;margin:0 0 4px;">✅ Claiming Your Squad...</p>
-    <p style="color:var(--ff-muted);font-size:13px;margin:0 0 8px;">{{ order.squad_name or "Squad" }} · Slot #{{ order.slot_number if order.slot_number else "—" }}</p>
+    <p style="color:var(--ff-muted);font-size:13px;margin:0 0 8px;">{{ order.squad_name or "Squad" }}</p>
     <p style="color:var(--ff-muted);font-size:12px;margin:0;">Redirecting to Lobby in <span id="countdown">2</span>s</p>
+    {% endif %}
   </div>
 
   <script>
     (function () {
+      {% if not already_used %}
       var contact = "claimed_{{ order.id }}";
       try { localStorage.setItem("ff_contact", contact); localStorage.setItem("ff_join_epoch", "{{ order.tournament_id }}"); } catch (e) {}
       var sec = 2;
@@ -35,6 +43,7 @@
           window.location.href = "{{ lobby_url }}";
         }
       }, 1000);
+      {% endif %}
     })();
   </script>
 </body>
