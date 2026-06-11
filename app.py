@@ -1102,15 +1102,27 @@ def claim_squad(token):
 
     with get_db() as conn:
         order = conn.execute(
-            "SELECT * FROM orders WHERE claim_token = ?", (token,)
+            """
+            SELECT o.*, s.slot_number
+            FROM orders o
+            LEFT JOIN slots s ON s.id = o.assigned_slot_id
+            WHERE o.claim_token = ?
+            """,
+            (token,),
         ).fetchone()
         if not order:
             abort(404)
         if order["status"] != "approved":
             return render_template("claim.html", error="এই স্লট আর সক্রিয় নেই", token=token, claimed=False, order=None)
-        if order.get("claimed_contact"):
-            player_contact = order["claimed_contact"]
-            vt = order["view_token"] if "view_token" in order.keys() else ""
+        try:
+            already_claimed = order["claimed_contact"]
+        except (KeyError, IndexError, TypeError):
+            already_claimed = None
+        if already_claimed:
+            try:
+                vt = order["view_token"]
+            except (KeyError, IndexError, TypeError):
+                vt = ""
             return redirect(url_for("join_status", order_id=order["id"], t=vt))
         tournament = get_tournament(conn)
         members = conn.execute(
@@ -1142,13 +1154,20 @@ def claim_squad_submit(token):
         ).fetchone()
         if not order:
             abort(404)
-        if order.get("claimed_contact"):
+        try:
+            already = order["claimed_contact"]
+        except (KeyError, IndexError, TypeError):
+            already = None
+        if already:
             return redirect(url_for("claim_squad", token=token, error="ইতিমধ্যে ক্লেইম করা হয়েছে"))
         conn.execute(
             "UPDATE orders SET claimed_contact = ?, leader_contact = ? WHERE id = ?",
             (contact, contact, order["id"]),
         )
-        vt = order["view_token"] if "view_token" in order.keys() else ""
+        try:
+            vt = order["view_token"]
+        except (KeyError, IndexError, TypeError):
+            vt = ""
 
     return redirect(url_for("join_status", order_id=order["id"], t=vt))
 
