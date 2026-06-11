@@ -1124,21 +1124,16 @@ def claim_squad(token):
                 "UPDATE orders SET claimed_contact = ?, leader_contact = ? WHERE id = ?",
                 (placeholder, placeholder, order["id"]),
             )
-            try:
-                vt = order["view_token"]
-            except (KeyError, IndexError, TypeError):
-                vt = ""
-        else:
-            try:
-                vt = order["view_token"]
-            except (KeyError, IndexError, TypeError):
-                vt = ""
+
+    already_claimed = bool(already)
+
+    if already_claimed:
+        return redirect(url_for("home"))
 
     return render_template(
         "claim.html",
         order=dict(order),
         token=token,
-        vt=vt or "",
         lobby_url=url_for("home"),
     )
 
