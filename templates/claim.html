@@ -3,53 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Claim Your Squad</title>
+  <title>Claiming Squad...</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='ff-lobby.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='ff-theme.css') }}" />
+  <style>
+    body { display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0; }
+    .claim-box { text-align:center;padding:24px; }
+    .spinner { width:40px;height:40px;border:3px solid rgba(45,212,191,0.2);border-top-color:var(--ff-teal);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
 </head>
-<body class="ff-form-page">
-  <div class="ff-form-wrap" style="max-width:480px;">
-
-    {% if error %}
-    <div style="background:#7f1d1d;border:1px solid #ef4444;border-radius:10px;padding:12px;margin-bottom:16px;text-align:center;">
-      <p style="color:#fca5a5;font-size:13px;margin:0;">{{ error }}</p>
-    </div>
-    {% endif %}
-
-    {% if not order %}
-    <p style="color:#fff;text-align:center;font-size:14px;">এই লিংক আর বৈধ নয়।</p>
-    <a href="{{ url_for('home') }}" style="display:block;text-align:center;color:#2dd4bf;font-size:13px;margin-top:12px;">← Lobby তে যান</a>
-
-    {% else %}
-    <div style="background:#1a472a;border:2px solid #2dd4bf;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;">
-      <p style="color:#2dd4bf;font-size:18px;font-weight:900;margin:0 0 4px;">🎯 Claim Your Squad</p>
-      <p style="color:#fff;font-size:13px;margin:0;">Slot #{{ order.slot_number if order.slot_number else "—" }} · {{ order.squad_name or "Squad" }}</p>
-    </div>
-
-    <div class="ff-receipt ff-card" style="margin-bottom:16px;">
-      <p class="ff-receipt-title">Your Squad</p>
-      {% for m in members %}
-      <div class="ff-receipt-player">
-        <span class="ff-receipt-pos">Player {{ m.position }}</span>
-        <span class="ff-receipt-name">{{ m.display_name }}</span>
-      </div>
-      {% endfor %}
-    </div>
-
-    <div style="background:#1e1e3a;border:1px solid rgba(45,212,191,0.2);border-radius:12px;padding:20px;">
-      <p style="color:#fff;font-size:14px;font-weight:700;margin:0 0 12px;text-align:center;">আপনার মোবাইল নম্বর দিন</p>
-      <form action="{{ url_for('claim_squad_submit', token=token) }}" method="POST">
-        <input type="tel" name="contact" placeholder="০১XXXXXXXXX" required
-          style="width:100%;padding:12px;font-size:16px;border:1px solid rgba(45,212,191,0.3);border-radius:8px;background:#0a0a1e;color:#fff;text-align:center;outline:none;box-sizing:border-box;margin-bottom:12px;" />
-        <button type="submit"
-          style="width:100%;background:#2dd4bf;color:#0a0a1a;font-weight:800;font-size:14px;padding:12px;border:none;border-radius:8px;cursor:pointer;">
-          Claim Now
-        </button>
-      </form>
-    </div>
-
-    <a href="{{ url_for('home') }}" style="display:block;text-align:center;color:#94a3b8;font-size:12px;margin-top:14px;">← Lobby তে যান</a>
-    {% endif %}
+<body>
+  <div class="claim-box">
+    <div class="spinner"></div>
+    <p style="color:var(--ff-text);font-size:16px;font-weight:700;margin:0 0 4px;">✅ Claiming Your Squad...</p>
+    <p style="color:var(--ff-muted);font-size:13px;margin:0 0 8px;">{{ order.squad_name or "Squad" }} · Slot #{{ order.slot_number if order.slot_number else "—" }}</p>
+    <p style="color:var(--ff-muted);font-size:12px;margin:0;">Redirecting to Lobby in <span id="countdown">2</span>s</p>
   </div>
+
+  <script>
+    (function () {
+      var contact = "claimed_{{ order.id }}";
+      try { localStorage.setItem("ff_contact", contact); localStorage.setItem("ff_join_epoch", "{{ order.tournament_id }}"); } catch (e) {}
+      var sec = 2;
+      var el = document.getElementById("countdown");
+      var iv = setInterval(function () {
+        sec -= 1;
+        if (el) el.textContent = sec;
+        if (sec <= 0) {
+          clearInterval(iv);
+          window.location.href = "{{ lobby_url }}";
+        }
+      }, 1000);
+    })();
+  </script>
 </body>
 </html>

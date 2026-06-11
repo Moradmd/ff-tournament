@@ -1097,8 +1097,6 @@ def verify_supabase_payment():
 @app.route("/claim/<token>")
 def claim_squad(token):
     token = (token or "").strip()
-    error = request.args.get("error") or ""
-    claimed = request.args.get("claimed") == "1"
 
     with get_db() as conn:
         order = conn.execute(
@@ -1113,63 +1111,36 @@ def claim_squad(token):
         if not order:
             abort(404)
         if order["status"] != "approved":
-            return render_template("claim.html", error="এই স্লট আর সক্রিয় নেই", token=token, claimed=False, order=None)
-        try:
-            already_claimed = order["claimed_contact"]
-        except (KeyError, IndexError, TypeError):
-            already_claimed = None
-        if already_claimed:
-            try:
-                vt = order["view_token"]
-            except (KeyError, IndexError, TypeError):
-                vt = ""
-            return redirect(url_for("join_status", order_id=order["id"], t=vt))
-        tournament = get_tournament(conn)
-        members = conn.execute(
-            "SELECT * FROM order_members WHERE order_id = ? ORDER BY position",
-            (order["id"],),
-        ).fetchall()
+            return render_template("claim.html", error="এই স্লট আর সক্রিয় নেই", order=None)
 
-    return render_template(
-        "claim.html",
-        token=token,
-        error=error,
-        claimed=claimed,
-        order=dict(order),
-        members=members,
-        tournament=tournament,
-        entry_fee=ENTRY_FEE,
-    )
-
-
-@app.route("/claim/<token>/submit", methods=["POST"])
-def claim_squad_submit(token):
-    contact = (request.form.get("contact") or "").strip()
-    if not contact:
-        return redirect(url_for("claim_squad", token=token, error="মোবাইল নম্বর দিন"))
-
-    with get_db() as conn:
-        order = conn.execute(
-            "SELECT * FROM orders WHERE claim_token = ?", (token,)
-        ).fetchone()
-        if not order:
-            abort(404)
         try:
             already = order["claimed_contact"]
         except (KeyError, IndexError, TypeError):
             already = None
-        if already:
-            return redirect(url_for("claim_squad", token=token, error="ইতিমধ্যে ক্লেইম করা হয়েছে"))
-        conn.execute(
-            "UPDATE orders SET claimed_contact = ?, leader_contact = ? WHERE id = ?",
-            (contact, contact, order["id"]),
-        )
-        try:
-            vt = order["view_token"]
-        except (KeyError, IndexError, TypeError):
-            vt = ""
 
-    return redirect(url_for("join_status", order_id=order["id"], t=vt))
+        if not already:
+            placeholder = f"claimed_{order['id']}"
+            conn.execute(
+                "UPDATE orders SET claimed_contact = ?, leader_contact = ? WHERE id = ?",
+                (placeholder, placeholder, order["id"]),
+            )
+            try:
+                vt = order["view_token"]
+            except (KeyError, IndexError, TypeError):
+                vt = ""
+        else:
+            try:
+                vt = order["view_token"]
+            except (KeyError, IndexError, TypeError):
+                vt = ""
+
+    return render_template(
+        "claim.html",
+        order=dict(order),
+        token=token,
+        vt=vt or "",
+        lobby_url=url_for("home"),
+    )
 
 
 @app.route("/join/status/<int:order_id>")
