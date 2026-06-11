@@ -1128,7 +1128,9 @@ def claim_squad(token):
     already_claimed = bool(already)
 
     if already_claimed:
-        return render_template("claim.html", already_used=True, lobby_url=url_for("home"))
+        with get_db() as conn:
+            t = get_tournament(conn)
+        return render_template("claim.html", already_used=True, join_url=url_for("join", token=t["join_token"]), lobby_url=url_for("home"))
 
     return render_template(
         "claim.html",
